@@ -15,7 +15,7 @@ STEPS = np.array([20, 70, 100, 150, 250, 500, 1000, 2000, 3000, 5000, 7500, 1000
 def _fix(x):
     if not math.isfinite(x):
         return 0.0
-    if abs(x) < 1e-30:   # gen fixdenorm flushes subnormals; 1e-30 is a safe stand-in
+    if abs(x) < 1.17549435e-38:   # same flush limit as tools/gsx.py
         return 0.0
     return x
 
