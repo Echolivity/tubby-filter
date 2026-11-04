@@ -1,6 +1,9 @@
 """Builds 'Tubby Filter.maxpat' and 'Tubby Filter.amxd' from tubby_filter.genexpr.
 
-python3 build_device.py [outdir]   (default ../device/)
+python3 build_device.py [outdir]                 V2.2 release candidate (default ../device/)
+python3 build_device.py <outdir> --v21           reproduces the V2.1 device byte-for-byte
+                                                 from legacy/v2.1/tubby_filter.genexpr
+python3 build_device.py <outdir> --candidate F   research build (EXPERIMENTAL label)
 The .amxd is the same patcher wrapped in Live's device container:
   "ampf" <u32 LE 4> "aaaa"  |  "meta" <u32 LE 4> 00000000  |  "ptch" <u32 LE n> <patcher JSON> NUL
 (chunk layout as read by Ableton's maxdevtools/maxdiff/amxd_textconv.py).
@@ -9,20 +12,29 @@ build_manifest.json with SHA-256 hashes is written next to the outputs.
 """
 import hashlib, json, os, struct, sys
 
-VERSION = "2.1.0"
-# --candidate <genexpr>: EXPERIMENTAL build with the Motion control (V2.2 research).
-# Without it the output is byte-identical to the 2.1.0 release build.
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.join(HERE, "..")
+VERSION = "2.2.0-rc1"
+FLAVOUR = "v22"                     # v22 | v21 | candidate
+SOURCE = os.path.join(HERE, "tubby_filter.genexpr")
 CANDIDATE = None
+if "--v21" in sys.argv:
+    sys.argv.remove("--v21")
+    FLAVOUR, VERSION = "v21", "2.1.0"
+    SOURCE = os.path.join(ROOT, "legacy", "v2.1", "tubby_filter.genexpr")
 if "--candidate" in sys.argv:
     i = sys.argv.index("--candidate")
-    CANDIDATE = sys.argv[i + 1]
+    CANDIDATE = SOURCE = sys.argv[i + 1]
     del sys.argv[i:i + 2]
-    VERSION = "2.2.0-candidate (EXPERIMENTAL)"
+    FLAVOUR, VERSION = "candidate", "2.2.0-candidate (EXPERIMENTAL)"
+V21 = FLAVOUR == "v21"
+HAS_MOTION = FLAVOUR in ("v22", "candidate")
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "device")
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "device")
 os.makedirs(OUT, exist_ok=True)
-code = open(CANDIDATE or os.path.join(HERE, "tubby_filter.genexpr")).read()
+code = open(SOURCE).read()
+if HAS_MOTION != ("Param motion(" in code):
+    sys.exit(f"source/flavour mismatch: {SOURCE} {'lacks' if HAS_MOTION else 'has'} the motion Param")
 APP = {"major": 8, "minor": 6, "revision": 0, "architecture": "x64", "modernui": 1}
 
 # ---------------------------------------------------------------- gen~ subpatch
@@ -73,11 +85,12 @@ def comment(i, text, px, py, w=80, size=9.0, color=CREAM, bold=0):
                           "patching_rect": [700, 60 + len(boxes) * 2, w, 18]}})
 
 comment("title", "TUBBY FILTER", 8, 4, 120, 10.5, AMBER, 1)
-comment("sub", "stepped hi-pass · console drive · v2.1" if not CANDIDATE else
-        "v2.2 candidate · EXPERIMENTAL", 8, 152, 220, 8.0)
+comment("sub", {"v21": "stepped hi-pass · console drive · v2.1",
+                "v22": "stepped hi-pass · console drive · v2.2",
+                "candidate": "v2.2 candidate · EXPERIMENTAL"}[FLAVOUR], 8, 152, 220, 8.0)
 
 obj("plugin", "plugin~", 2, 2, 30, 330, 60, ["signal", "signal"])
-boxes.append({"box": {"id": "gen", "maxclass": "newobj", "text": "gen~ @title tubby_v2_1", "numinlets": 2,
+boxes.append({"box": {"id": "gen", "maxclass": "newobj", "text": "gen~ @title " + ("tubby_v2_1" if FLAVOUR != "v22" else "tubby_v2_2"), "numinlets": 2,
                       "numoutlets": 2, "outlettype": ["signal", "signal"], "patching_rect": [30, 380, 220, 22],
                       "patcher": gen}})
 obj("plugout", "plugout~", 2, 0, 30, 430, 60)
@@ -133,15 +146,20 @@ def dial(i, name, lo, hi, init, unit, px, py, msg, info, exp=0.0):
 dial("reso", "Reso", 0.5, 8.0, 1.4, 1, 170, 6, "reso", "Resonance (Q) at the cutoff. 0.707 = no peak.", 2.0)
 dial("drive", "Drive", 0.0, 100.0, 20.0, 5, 222, 6, "drive", "Console drive, 0..+18 dB into the saturator.")
 dial("outlvl", "Output", -24.0, 12.0, 0.0, 4, 274, 6, "outdb", "Output level in dB.")
+# V2.1 shipped help texts that still described the V2 Click/Glide rule; they are kept
+# verbatim for the byte-identical --v21 and research builds, and corrected for V2.2
 dial("glide", "Glide", 0.0, 2000.0, 0.0, 2, 170, 72, "glide",
-     "0 = hard switched (with switch transient). Above 0: steps glide over this many ms, no transient.", 3.0)
-dial("click", "Click", 0.0, 100.0, 30.0, 5, 222, 72, "click", "Switch transient level (hard-switch mode only).")
+     "0 = hard switched (with switch transient). Above 0: steps glide over this many ms, no transient." if FLAVOUR != "v22" else
+     "How the cutoff moves between steps: 0 = hard switch, otherwise a glide of this many ms.", 3.0)
+dial("click", "Click", 0.0, 100.0, 30.0, 5, 222, 72, "click",
+     "Switch transient level (hard-switch mode only)." if FLAVOUR != "v22" else
+     "Level of the switch sound on every step move, at any Glide setting. 0 = silent moves.")
 dial("blend", "Mix", 0.0, 100.0, 100.0, 5, 274, 72, "blend", "Dry/wet.")
-if CANDIDATE:
+if HAS_MOTION:
     control("motion", "live.dial", "Motion", "Motion", "motion",
             {"parameter_type": 0, "parameter_mmin": 0.0, "parameter_mmax": 100.0, "parameter_initial": [0.0],
              "parameter_unitstyle": 5},
-            [112, 104, 48, 46], ["", "float"],
+            [112, 104, 48, 46] if FLAVOUR == "candidate" else [112, 108, 48, 42], ["", "float"],
             "Resonance blooms while the cutoff is moving and relaxes when it stops. 0 = V2.1 behaviour.", DIALCOL)
 
 TABCOL = {"activebgoncolor": AMBER, "textcolor": CREAM, "activetextoncolor": [0.1, 0.1, 0.1, 1],
@@ -174,7 +192,7 @@ open(os.path.join(OUT, "Tubby Filter.amxd"), "wb").write(amxd)
 def sha(b):
     return hashlib.sha256(b).hexdigest()
 manifest = {"version": VERSION,
-            (os.path.relpath(CANDIDATE, os.path.join(HERE, "..")) if CANDIDATE else "src/tubby_filter.genexpr"): sha(code.encode()),
+            (os.path.relpath(CANDIDATE, ROOT) if CANDIDATE else "src/tubby_filter.genexpr"): sha(code.encode()),
             "device/Tubby Filter.maxpat": sha(js.encode()),
             "device/Tubby Filter.amxd": sha(amxd)}
 open(os.path.join(OUT, "build_manifest.json"), "w").write(json.dumps(manifest, indent=1) + "\n")

@@ -20,7 +20,19 @@ from gsx import compile_genexpr, SemanticsError
 import model_v21 as M
 from metrics import transition_artifact, fr_error, STEPS, db
 
-SRC = os.path.join(ROOT, "src", "tubby_filter.genexpr")
+# Target under test. Default: the V2.2 release candidate (Motion at its default 0,
+# so every V2.1 behaviour assertion below must still hold). TUBBY_TARGET=v2.1 runs
+# the identical suite against the frozen V2.1 baseline in legacy/v2.1.
+TARGET = os.environ.get("TUBBY_TARGET", "v2.2")
+assert TARGET in ("v2.1", "v2.2"), TARGET
+if TARGET == "v2.1":
+    SRC = os.path.join(ROOT, "legacy", "v2.1", "tubby_filter.genexpr")
+    DEV = os.path.join(ROOT, "legacy", "v2.1", "device")
+    BUILD_FLAGS = ["--v21"]
+else:
+    SRC = os.path.join(ROOT, "src", "tubby_filter.genexpr")
+    DEV = os.path.join(ROOT, "device")
+    BUILD_FLAGS = []
 V2SRC = os.path.join(ROOT, "legacy", "v2", "tubby_filter.genexpr")
 
 
@@ -317,7 +329,7 @@ def test_unity_drive_and_output_calibration(v21, sr):
 
 # ---------------------------------------------------------------- build / device files
 def _build(outdir):
-    subprocess.run([sys.executable, os.path.join(ROOT, "src", "build_device.py"), outdir],
+    subprocess.run([sys.executable, os.path.join(ROOT, "src", "build_device.py"), outdir] + BUILD_FLAGS,
                    check=True, capture_output=True)
     return open(os.path.join(outdir, "Tubby Filter.amxd"), "rb").read()
 
@@ -326,7 +338,7 @@ def test_build_is_reproducible_and_matches_shipped_device():
     with tempfile.TemporaryDirectory() as d1, tempfile.TemporaryDirectory() as d2:
         a, b = _build(d1), _build(d2)
     assert a == b
-    assert a == open(os.path.join(ROOT, "device", "Tubby Filter.amxd"), "rb").read()
+    assert a == open(os.path.join(DEV, "Tubby Filter.amxd"), "rb").read()
 
 
 def _chunks(data):
@@ -341,7 +353,7 @@ def _chunks(data):
 
 
 def test_amxd_container_and_embedded_source():
-    data = open(os.path.join(ROOT, "device", "Tubby Filter.amxd"), "rb").read()
+    data = open(os.path.join(DEV, "Tubby Filter.amxd"), "rb").read()
     ch = _chunks(data)
     assert ch["ampf"] == b"aaaa"                       # audio effect
     assert ch["ptch"][-1:] == b"\0"
@@ -352,7 +364,7 @@ def test_amxd_container_and_embedded_source():
 
 
 def test_ui_parameters_cover_dsp_and_keep_v2_names():
-    patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
+    patch = json.load(open(os.path.join(DEV, "Tubby Filter.maxpat")))["patcher"]
     msgs = {b["box"]["text"].split()[1] for b in patch["boxes"] if b["box"].get("text", "").startswith("prepend ")}
     params = set(compile_genexpr(open(SRC).read()).params)
     assert msgs == params

@@ -87,8 +87,22 @@ def check_case(name, case, sr, live, ref, inp):
         elif chk == "noise_floor":
             nfv = float(db(np.abs(live).max()))
             res[chk] = dict(value=round(nfv, 1), limit=TOL["noise_floor_dbfs"], ok=nfv <= TOL["noise_floor_dbfs"])
+        elif chk == "motion_bloom":
+            # statistical: the bloom (band energy around the new cutoff in the 300 ms after the
+            # step, relative to the same window with Motion 0) must match the reference within 2 dB
+            ref0 = load(os.path.join(HERE, "signals", str(sr), f"{name}_ref_motion0.wav"))[1][:n]
+            sos = signal.butter(2, [700, 1400], "bp", fs=sr, output="sos")
+            def bloom(y):
+                b_ = signal.sosfilt(sos, y[:, 0])
+                i0 = s + int(1.0 * sr)
+                w0 = slice(i0, i0 + int(0.3 * sr))
+                return float(db(np.sqrt(np.mean(b_[w0] ** 2)) / np.sqrt(np.mean(signal.sosfilt(sos, ref0[:, 0])[w0] ** 2))))
+            bl, br = bloom(live), bloom(ref)
+            res[chk] = dict(value=dict(bloom_live_db=round(bl, 2), bloom_ref_db=round(br, 2)), limit="±2 dB",
+                            ok=bool(abs(bl - br) <= 2.0 and br > 1.0))
     # every case: the device must not add delay relative to the reference
-    if "latency" not in res and "noise_floor" not in case["checks"] and "separation" not in case["checks"]:
+    if "latency" not in res and "noise_floor" not in case["checks"] and "separation" not in case["checks"] \
+            and "motion_bloom" not in case["checks"]:
         res["latency"] = dict(value=lag, limit=TOL["latency_samples"], ok=lag == TOL["latency_samples"])
     out["checks"] = res
     out["status"] = "PASS" if all(v["ok"] for v in res.values()) else "FAIL"

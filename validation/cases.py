@@ -53,6 +53,16 @@ def sig_left_only(sr, dur=3.0):
     return np.clip(a, -1, 1), np.zeros_like(a)
 
 
+def sig_pink_motion(sr, dur=4.0):
+    from scipy import signal as _s
+    rng = np.random.default_rng(14)
+    p = _s.lfilter([0.049922035, -0.095993537, 0.050612699, -0.004408786],
+                   [1, -2.494956002, 2.017265875, -0.522189400], rng.standard_normal(int(dur * sr)))
+    p = p / np.std(p) * 10 ** (-18 / 20)
+    a = np.concatenate([np.zeros(int(PRE * sr)), p])
+    return a, a.copy()
+
+
 def sig_silence(sr, dur=3.0):
     z = np.zeros(int(dur * sr)); return z, z
 
@@ -60,12 +70,13 @@ def sig_silence(sr, dur=3.0):
 # device settings use the names shown on the device panel; "param" maps to gen~
 UI = {"Filter": "knob", "Filter R": "knobr", "Reso": "reso", "Drive": "drive", "Output": "outdb",
       "Glide": "glide", "Click": "click", "Mix": "blend", "Slope": "slope", "Stereo": "stereo",
-      "Drive Cal": "comp", "Mode": "drvonly"}
+      "Drive Cal": "comp", "Mode": "drvonly", "Motion": "motion"}
 STEP_LABELS = ["FLAT", "70", "100", "150", "250", "500", "1k", "2k", "3k", "5k", "7.5k", "10k"]
 ENUMS = {"Slope": ["12dB", "18dB"], "Stereo": ["Link", "Dual", "Mono"], "Drive Cal": ["Peak", "Unity"],
          "Mode": ["Filter", "Drive"], "Filter": STEP_LABELS, "Filter R": STEP_LABELS}
 DEFAULT_UI = {"Filter": "FLAT", "Filter R": "FLAT", "Reso": 1.4, "Drive": 20, "Output": 0, "Glide": 0,
-              "Click": 0, "Mix": 100, "Slope": "18dB", "Stereo": "Link", "Drive Cal": "Unity", "Mode": "Filter"}
+              "Click": 0, "Mix": 100, "Slope": "18dB", "Stereo": "Link", "Drive Cal": "Unity", "Mode": "Filter",
+              "Motion": 0}
 
 CASES = {
     "C01_impulse_flat_clean": dict(signal="impulse", ui={"Drive": 0},
@@ -91,20 +102,35 @@ CASES = {
     "C11_leftonly_mono": dict(signal="left_only", ui={"Filter": "1k", "Stereo": "Mono"}, checks=["sample_exact"]),
     "C12_silence_noise_floor": dict(signal="silence", ui={"Filter": "1k", "Reso": 8, "Drive": 100, "Click": 100},
                                     checks=["noise_floor"]),
+    # ---- V2.2 Motion
+    # C13: Motion at maximum with a STATIC cutoff must be sample-identical to Motion 0 / V2.1
+    "C13_motion100_static_cutoff": dict(signal="noise_lr", ui={"Filter": "1k", "Reso": 4, "Motion": 100},
+                                        checks=["sample_exact"]),
+    # C14: Filter automated 150 -> 1k at exactly 1.0 s after the pre-roll (120 BPM: bar 1 beat 3
+    # when the clip starts at bar 1 and the pre-roll is 0.5 s -> place the step at 1.5 s = 1.4.1).
+    # M4L parameter automation is block-timed, so this is compared statistically, not sample-exact.
+    "C14_motion100_step_bloom": dict(signal="pink_motion", ui={"Filter": "150", "Reso": 1.4, "Motion": 100},
+                                     automation={"Filter": [(1.0, "1k")]}, checks=["motion_bloom"]),
 }
 
 SIGNALS = {
     "impulse": sig_impulse, "sweep": sig_sweep, "step": sig_step,
     "sine100_-6": lambda sr: sig_sine(sr, 100, -6), "sine7k_-6": lambda sr: sig_sine(sr, 7000, -6),
     "sine1k_-40": lambda sr: sig_sine(sr, 1000, -40), "noise_lr": sig_noise_lr,
-    "left_only": sig_left_only, "silence": sig_silence,
+    "left_only": sig_left_only, "silence": sig_silence, "pink_motion": sig_pink_motion,
 }
 
 
-def gen_params(ui_overrides):
-    """Device-panel settings -> gen~ parameter values (the values the device sends)."""
+def gen_params(ui_overrides, automation=None, sr=None, n=None):
+    """Device-panel settings -> gen~ parameter values (the values the device sends).
+    automation: {control: [(seconds after the pre-roll, value), ...]} -> per-sample arrays."""
     ui = dict(DEFAULT_UI); ui.update(ui_overrides)
     out = {}
     for k, v in ui.items():
         out[UI[k]] = ENUMS[k].index(v) if k in ENUMS else float(v)
+    for k, pts in (automation or {}).items():
+        arr = np.full(n, float(out[UI[k]]))
+        for t, v in pts:
+            arr[int((PRE + t) * sr):] = ENUMS[k].index(v) if k in ENUMS else float(v)
+        out[UI[k]] = arr
     return out, ui

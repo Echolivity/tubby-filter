@@ -1,5 +1,8 @@
 // =====================================================================
-//  Tubby Filter v2.1 — gen~ codebox (in1/in2 -> out1/out2)
+//  Tubby Filter v2.2.0-rc1 — gen~ codebox (in1/in2 -> out1/out2)
+//  = v2.1 + Motion (movement-dependent resonance). Motion 0 == v2.1 exactly.
+//  Release candidate: validated in simulation only; native gen~ and Ableton
+//  Live validation pending (see validation/V22_RELEASE_READINESS.md).
 //  Stepped dub high-pass with console drive, inspired by the switched
 //  high-pass on King Tubby's desk. Character model, not a circuit clone.
 //
@@ -15,6 +18,9 @@
 //   * DSP kernels are pure functions: state in, state out
 //   * every state write passes fixnan(fixdenorm())
 //  Times are in ms/Hz, so behaviour is the same at any sample rate.
+//  No identifier shadows a gen operator/constant (tools/gen_compat.py; 2.2.0-rc1
+//  renamed v2.1's `f` -> `hpf` and `i` -> `idx`, which collide with gen's
+//  `f` (float) and `i` (int) operators).
 // =====================================================================
 
 // ---- parameters (V2 names, ranges and meanings unchanged)
@@ -32,6 +38,8 @@ Param drvonly(0, min=0, max=1);    // 1 = filter bypassed, drive only
 Param outdb(0, min=-24, max=12);   // output level, dB
 // ---- V2.1 (internal, sent by live.thisdevice; not a user control)
 Param active(1, min=0, max=1);     // device on/off state
+// ---- V2.2
+Param motion(0, min=0, max=100);   // % resonance bloom while the cutoff moves
 
 // ---------------------------------------------------------------------
 // one-pole smoother, time constant in ms
@@ -91,15 +99,15 @@ chan(x, G, b, tb, s0, sp, cw, amt, r5, g, k, sl, w, bl, dxp, dyp, ic1, ic2, ops)
     G1 = g / (1 + g);
     v = (h - ops) * G1;
     lp = v + ops;
-    f = mix(h, h - lp, sl);
+    hpf = mix(h, h - lp, sl);
     // FLAT/bypass crossfade, then dry/wet
-    y = mix(x, mix(d, f, w), bl);
+    y = mix(x, mix(d, hpf, w), bl);
     return y, yd, dy, fx(2 * v1 - ic1), fx(2 * v2 - ic2), fx(lp + v);
 }
 
 // step index -> cutoff Hz (index 0 = FLAT, parked at 20 Hz)
-stepfreq(i) {
-    return selector(i + 1, 20, 70, 100, 150, 250, 500, 1000, 2000, 3000, 5000, 7500, 10000);
+stepfreq(idx) {
+    return selector(idx + 1, 20, 70, 100, 150, 250, 500, 1000, 2000, 3000, 5000, 7500, 10000);
 }
 
 // switch transient: three decaying bursts (contact bounce), t in seconds
@@ -120,6 +128,7 @@ History tL(1), tR(1);              // s since last switch, per channel
 History age(0);                    // s since load / reset
 History ogs(1);                    // smoothed output gain
 History rw(0);                     // dry -> processed ramp after reset
+History mvL(0), mvR(0);            // motion envelopes (0..1, mapped cutoff speed)
 History srp(0), actp(1);           // previous sample rate / active
 History nl1(0), nl2(0);            // click noise filters
 History dxL(0), dyL(0), c1L(0), c2L(0), opL(0);   // left DSP state
@@ -195,8 +204,31 @@ nlR = keep * lfR + (ltR - keep * lfR) * cg;
 nlL = rst ? ltL : nlL;
 nlR = rst ? ltR : nlR;
 nlR = (dw <= 0 && abs(nlR - nlL) < 1e-9) ? nlL : nlR;   // Link: bit-identical
+// ---- Motion: speed of the cutoff (octaves/s), from this frame's glide step
+vL = rst ? 0 : (nlL - lfL) * sr / log(2);
+vR = rst ? 0 : (nlR - lfR) * sr / log(2);
+// a Link<->Dual change moves the right cutoff internally (20 ms); that is not a
+// performed gesture, so during the crossfade the right side uses the left speed
+vR = (dw > 0 && dw < 1) ? vL : vR;
 lfL = nlL;
 lfR = nlR;
+// map speed to 0..1 first (8 oct/s = half effect), then envelope it
+// (2 ms attack, 120 ms release), so the release time does not depend on
+// how fast the cutoff moved (rc1 fix: the research candidate enveloped the
+// raw speed, which held a hard step's bloom for ~0.6 s instead of ~120 ms)
+vaL = abs(vL) / (abs(vL) + 8);
+vaR = abs(vR) / (abs(vR) + 8);
+c2   = 1 - exp(-1 / (2 * 0.001 * sr));
+c120 = 1 - exp(-1 / (120 * 0.001 * sr));
+nmvL = fx(mvL + (vaL - mvL) * (vaL > mvL ? c2 : c120));
+nmvR = fx(mvR + (vaR - mvR) * (vaR > mvR ? c2 : c120));
+mvL = nmvL;
+mvR = nmvR;
+msm = slew(motion * 0.01, 20);
+// damping divisor: Q is multiplied by up to 1 + 4 * motion while moving;
+// with Motion 0 this is exactly 1, so the filter is bit-identical to v2.1
+kmL = 1 / (1 + msm * 4 * nmvL);
+kmR = 1 / (1 + msm * 4 * nmvR);
 fcL = clamp(exp(nlL), 10, fs * 0.45);
 fcR = clamp(exp(nlR), 10, fs * 0.45);
 
@@ -235,10 +267,10 @@ if (os2) {
     uR5 = fx(r1); uR6 = fx(r2); uR7 = fx(r3); uR8 = fx(r4);
 
     // --- DSP at 2x: two sub-samples per channel, state threaded through
-    v0L, sdxL, sdyL, s1L, s2L, soL = chan(u0L, G, b, tb, s0, sp, cw, amt, r5, gL, k, sl, weL, bl, sdxL, sdyL, s1L, s2L, soL);
-    v1L, sdxL, sdyL, s1L, s2L, soL = chan(u1L, G, b, tb, s0, sp, cw, amt, r5, gL, k, sl, weL, bl, sdxL, sdyL, s1L, s2L, soL);
-    v0R, sdxR, sdyR, s1R, s2R, soR = chan(u0R, G, b, tb, s0, sp, cw, amt, r5, gR, k, sl, weR, bl, sdxR, sdyR, s1R, s2R, soR);
-    v1R, sdxR, sdyR, s1R, s2R, soR = chan(u1R, G, b, tb, s0, sp, cw, amt, r5, gR, k, sl, weR, bl, sdxR, sdyR, s1R, s2R, soR);
+    v0L, sdxL, sdyL, s1L, s2L, soL = chan(u0L, G, b, tb, s0, sp, cw, amt, r5, gL, k * kmL, sl, weL, bl, sdxL, sdyL, s1L, s2L, soL);
+    v1L, sdxL, sdyL, s1L, s2L, soL = chan(u1L, G, b, tb, s0, sp, cw, amt, r5, gL, k * kmL, sl, weL, bl, sdxL, sdyL, s1L, s2L, soL);
+    v0R, sdxR, sdyR, s1R, s2R, soR = chan(u0R, G, b, tb, s0, sp, cw, amt, r5, gR, k * kmR, sl, weR, bl, sdxR, sdyR, s1R, s2R, soR);
+    v1R, sdxR, sdyR, s1R, s2R, soR = chan(u1R, G, b, tb, s0, sp, cw, amt, r5, gR, k * kmR, sl, weR, bl, sdxR, sdyR, s1R, s2R, soR);
 
     // --- 2x down: y = (A0(v1) + A1(v0)) / 2
     e0L, q1, q2, q3, q4 = br4(v1L, A0, A2, A4, A6, dL1 * keep, dL2 * keep, dL3 * keep, dL4 * keep);
@@ -252,8 +284,8 @@ if (os2) {
     yL = (e0L + e1L) * 0.5;
     yR = (e0R + e1R) * 0.5;
 } else {
-    yL, sdxL, sdyL, s1L, s2L, soL = chan(xL, G, b, tb, s0, sp, cw, amt, r5, gL, k, sl, weL, bl, sdxL, sdyL, s1L, s2L, soL);
-    yR, sdxR, sdyR, s1R, s2R, soR = chan(xR, G, b, tb, s0, sp, cw, amt, r5, gR, k, sl, weR, bl, sdxR, sdyR, s1R, s2R, soR);
+    yL, sdxL, sdyL, s1L, s2L, soL = chan(xL, G, b, tb, s0, sp, cw, amt, r5, gL, k * kmL, sl, weL, bl, sdxL, sdyL, s1L, s2L, soL);
+    yR, sdxR, sdyR, s1R, s2R, soR = chan(xR, G, b, tb, s0, sp, cw, amt, r5, gR, k * kmR, sl, weR, bl, sdxR, sdyR, s1R, s2R, soR);
 }
 
 // ---- store DSP state
