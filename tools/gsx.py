@@ -484,13 +484,26 @@ class Program:
         unknown = set(values) - set(self.params)
         if unknown:
             raise KeyError(f"unknown params {unknown}")
-        P = np.ascontiguousarray(np.stack(cols, axis=1)) if cols else np.zeros((n, 0))
-        SR = np.ascontiguousarray(np.broadcast_to(np.asarray(sr, dtype=np.float64), (n,)))
-        return self.fn(np.ascontiguousarray(in1, dtype=np.float64),
-                       np.ascontiguousarray(in2, dtype=np.float64), SR, P, seed)
+        # always pass fresh, writeable, C-contiguous float64 arrays: numba types a
+        # read-only view differently and would compile a second (~20 s) copy
+        P = np.array(np.stack(cols, axis=1), dtype=np.float64, order="C") if cols else np.zeros((n, 0))
+        SR = np.array(np.broadcast_to(np.asarray(sr, dtype=np.float64), (n,)), dtype=np.float64, order="C")
+        return self.fn(np.array(in1, dtype=np.float64, order="C"),
+                       np.array(in2, dtype=np.float64, order="C"), SR, P, int(seed))
+
+
+_CACHE = {}
 
 
 def compile_genexpr(src, name="gsx_prog"):
+    """Compiled programs are cached per source text within a process."""
+    key = (src, name)
+    if key not in _CACHE:
+        _CACHE[key] = _compile(src, name)
+    return _CACHE[key]
+
+
+def _compile(src, name):
     params, funcs, body = P(tokenize(src)).program()
     g = Gen(params, funcs)
     env = {}

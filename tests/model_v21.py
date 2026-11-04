@@ -236,6 +236,6 @@ def run(in1, in2, sr, seed=1, **params):
         v = params.get(nm, DEFAULTS[nm])
         lo, hi = RANGES[nm]
         cols.append(np.clip(np.broadcast_to(np.asarray(v, float), (n,)), lo, hi))
-    P = np.ascontiguousarray(np.stack(cols, 1))
-    SR = np.ascontiguousarray(np.broadcast_to(np.asarray(sr, float), (n,)))
-    return _run(np.ascontiguousarray(in1, float), np.ascontiguousarray(in2, float), SR, P, seed)
+    P = np.array(np.stack(cols, 1), dtype=float, order="C")
+    SR = np.array(np.broadcast_to(np.asarray(sr, float), (n,)), dtype=float, order="C")  # writeable: avoids a numba recompile
+    return _run(np.array(in1, dtype=float, order="C"), np.array(in2, dtype=float, order="C"), SR, P, int(seed))
