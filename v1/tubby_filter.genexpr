@@ -1,0 +1,80 @@
+// King Tubby-style stepped high-pass filter (gen~ codebox)
+// Modeled on the Altec 9069B passive filter on Tubby's MCI board:
+// 11 switched positions, no smooth sweep, audible click on each step.
+
+Param knob(0, min=0, max=11);      // 0 = flat, 1..11 = 70 Hz .. 10 kHz
+Param reso(1.4, min=0.5, max=8);   // Q of the 2-pole section
+Param drive(20, min=0, max=100);   // % console overdrive before the filter
+Param glide(0, min=0, max=2000);   // ms; 0 = hard switched like the original
+Param click(30, min=0, max=100);   // % switch click level
+Param slope(1, min=0, max=1);      // 0 = 12 dB/oct, 1 = 18 dB/oct
+Param blend(100, min=0, max=100);  // % dry/wet
+
+// TPT state-variable high-pass (2-pole, resonant)
+svf_hp(x, g, k) {
+    History ic1(0), ic2(0);
+    a1 = 1 / (1 + g * (g + k));
+    a2 = g * a1;
+    a3 = g * a2;
+    v3 = x - ic2;
+    v1 = a1 * ic1 + a2 * v3;
+    v2 = ic2 + a2 * ic1 + a3 * v3;
+    ic1 = 2 * v1 - ic1;
+    ic2 = 2 * v2 - ic2;
+    return x - k * v1 - v2;
+}
+
+// TPT one-pole high-pass (adds the extra 6 dB/oct)
+op_hp(x, g) {
+    History s(0);
+    G = g / (1 + g);
+    v = (x - s) * G;
+    lp = v + s;
+    s = lp + v;
+    return x - lp;
+}
+
+History lf(3);     // smoothed log-frequency
+History wt(0);     // filter engaged amount (0 = flat)
+History prev(0);   // previous switch position
+History env(0);    // click envelope
+
+idx = clamp(floor(knob + 0.5), 0, 11);
+fsel = selector(idx + 1, 20, 70, 100, 150, 250, 500, 1000, 2000, 3000, 5000, 7500, 10000);
+
+// frequency: instant jump by default, optional log-domain glide
+kg = glide > 0.5 ? 1 - exp(-1 / (glide * 0.001 * samplerate)) : 1;
+nlf = lf + (log(fsel) - lf) * kg;
+lf = nlf;
+fc = clamp(exp(nlf), 10, samplerate * 0.45);
+
+// short crossfade when switching to/from FLAT
+on = idx > 0;
+nwt = wt + (on - wt) * (1 - exp(-1 / (0.004 * samplerate)));
+wt = nwt;
+
+// switch click: short noise burst whenever the position changes
+ne = idx != prev ? click * 0.01 : env * exp(-1 / (0.0025 * samplerate));
+env = ne;
+prev = idx;
+clk = noise() * ne * 0.15;
+
+// console drive (unity at low level, soft ceiling when pushed)
+dg = 1 + drive * 0.03;
+dL = tanh(in1 * dg) / sqrt(dg);
+dR = tanh(in2 * dg) / sqrt(dg);
+
+g = tan(pi * fc / samplerate);
+k = 1 / reso;
+
+hL = svf_hp(dL, g, k);
+hR = svf_hp(dR, g, k);
+fL = mix(hL, op_hp(hL, g), slope);
+fR = mix(hR, op_hp(hR, g), slope);
+
+wL = mix(dL, fL, nwt);
+wR = mix(dR, fR, nwt);
+
+b = blend * 0.01;
+out1 = mix(in1, wL, b) + clk;
+out2 = mix(in2, wR, b) + clk;
