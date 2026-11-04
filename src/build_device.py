@@ -10,11 +10,19 @@ build_manifest.json with SHA-256 hashes is written next to the outputs.
 import hashlib, json, os, struct, sys
 
 VERSION = "2.1.0"
+# --candidate <genexpr>: EXPERIMENTAL build with the Motion control (V2.2 research).
+# Without it the output is byte-identical to the 2.1.0 release build.
+CANDIDATE = None
+if "--candidate" in sys.argv:
+    i = sys.argv.index("--candidate")
+    CANDIDATE = sys.argv[i + 1]
+    del sys.argv[i:i + 2]
+    VERSION = "2.2.0-candidate (EXPERIMENTAL)"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "device")
 os.makedirs(OUT, exist_ok=True)
-code = open(os.path.join(HERE, "tubby_filter.genexpr")).read()
+code = open(CANDIDATE or os.path.join(HERE, "tubby_filter.genexpr")).read()
 APP = {"major": 8, "minor": 6, "revision": 0, "architecture": "x64", "modernui": 1}
 
 # ---------------------------------------------------------------- gen~ subpatch
@@ -65,7 +73,8 @@ def comment(i, text, px, py, w=80, size=9.0, color=CREAM, bold=0):
                           "patching_rect": [700, 60 + len(boxes) * 2, w, 18]}})
 
 comment("title", "TUBBY FILTER", 8, 4, 120, 10.5, AMBER, 1)
-comment("sub", "stepped hi-pass · console drive · v2.1", 8, 152, 220, 8.0)
+comment("sub", "stepped hi-pass · console drive · v2.1" if not CANDIDATE else
+        "v2.2 candidate · EXPERIMENTAL", 8, 152, 220, 8.0)
 
 obj("plugin", "plugin~", 2, 2, 30, 330, 60, ["signal", "signal"])
 boxes.append({"box": {"id": "gen", "maxclass": "newobj", "text": "gen~ @title tubby_v2_1", "numinlets": 2,
@@ -128,6 +137,12 @@ dial("glide", "Glide", 0.0, 2000.0, 0.0, 2, 170, 72, "glide",
      "0 = hard switched (with switch transient). Above 0: steps glide over this many ms, no transient.", 3.0)
 dial("click", "Click", 0.0, 100.0, 30.0, 5, 222, 72, "click", "Switch transient level (hard-switch mode only).")
 dial("blend", "Mix", 0.0, 100.0, 100.0, 5, 274, 72, "blend", "Dry/wet.")
+if CANDIDATE:
+    control("motion", "live.dial", "Motion", "Motion", "motion",
+            {"parameter_type": 0, "parameter_mmin": 0.0, "parameter_mmax": 100.0, "parameter_initial": [0.0],
+             "parameter_unitstyle": 5},
+            [112, 104, 48, 46], ["", "float"],
+            "Resonance blooms while the cutoff is moving and relaxes when it stops. 0 = V2.1 behaviour.", DIALCOL)
 
 TABCOL = {"activebgoncolor": AMBER, "textcolor": CREAM, "activetextoncolor": [0.1, 0.1, 0.1, 1],
           "bgcolor": [0.08, 0.1, 0.09, 1.0], "fontsize": 8.5}
@@ -159,7 +174,7 @@ open(os.path.join(OUT, "Tubby Filter.amxd"), "wb").write(amxd)
 def sha(b):
     return hashlib.sha256(b).hexdigest()
 manifest = {"version": VERSION,
-            "src/tubby_filter.genexpr": sha(code.encode()),
+            (os.path.relpath(CANDIDATE, os.path.join(HERE, "..")) if CANDIDATE else "src/tubby_filter.genexpr"): sha(code.encode()),
             "device/Tubby Filter.maxpat": sha(js.encode()),
             "device/Tubby Filter.amxd": sha(amxd)}
 open(os.path.join(OUT, "build_manifest.json"), "w").write(json.dumps(manifest, indent=1) + "\n")

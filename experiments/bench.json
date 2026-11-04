@@ -1,0 +1,279 @@
+{
+ "hardware": "Intel(R) Xeon(R) Processor @ 2.10GHz, 2 logical CPUs, Linux 6.18.44-fc-v233",
+ "method": "median of 7 x 2 s runs, single thread; instances run back to back",
+ "results": {
+  "44100 normal V2.1": {
+   "ns_per_frame": 431.0,
+   "pct_core_1": 1.9,
+   "spread_pct": 9.2,
+   "pct_core_8_measured": 14.8,
+   "pct_core_16_measured": 33.2
+  },
+  "44100 normal X1 core": {
+   "ns_per_frame": 498.0,
+   "pct_core_1": 2.2,
+   "spread_pct": 16.7
+  },
+  "44100 normal X2 motion": {
+   "ns_per_frame": 492.9,
+   "pct_core_1": 2.17,
+   "spread_pct": 5.1
+  },
+  "44100 normal X3b kick": {
+   "ns_per_frame": 488.8,
+   "pct_core_1": 2.16,
+   "spread_pct": 4.6
+  },
+  "44100 normal X1+X2+X3b": {
+   "ns_per_frame": 511.8,
+   "pct_core_1": 2.26,
+   "spread_pct": 7.0,
+   "pct_core_8_measured": 18.7,
+   "pct_core_16_measured": 45.4
+  },
+  "44100 normal V2.1 shipped source (GSX)": {
+   "ns_per_frame": 648.3,
+   "pct_core_1": 2.86
+  },
+  "44100 max drive V2.1": {
+   "ns_per_frame": 598.4,
+   "pct_core_1": 2.64,
+   "spread_pct": 43.4
+  },
+  "44100 max drive X1 core": {
+   "ns_per_frame": 524.7,
+   "pct_core_1": 2.31,
+   "spread_pct": 32.3
+  },
+  "44100 max drive X2 motion": {
+   "ns_per_frame": 516.9,
+   "pct_core_1": 2.28,
+   "spread_pct": 6.4
+  },
+  "44100 max drive X3b kick": {
+   "ns_per_frame": 504.0,
+   "pct_core_1": 2.22,
+   "spread_pct": 4.0
+  },
+  "44100 max drive X1+X2+X3b": {
+   "ns_per_frame": 496.1,
+   "pct_core_1": 2.19,
+   "spread_pct": 21.1
+  },
+  "44100 max drive V2.1 shipped source (GSX)": {
+   "ns_per_frame": 410.9,
+   "pct_core_1": 1.81
+  },
+  "44100 intensive modulation V2.1": {
+   "ns_per_frame": 415.2,
+   "pct_core_1": 1.83,
+   "spread_pct": 2.7
+  },
+  "44100 intensive modulation X1 core": {
+   "ns_per_frame": 426.1,
+   "pct_core_1": 1.88,
+   "spread_pct": 2.9
+  },
+  "44100 intensive modulation X2 motion": {
+   "ns_per_frame": 458.6,
+   "pct_core_1": 2.02,
+   "spread_pct": 10.9
+  },
+  "44100 intensive modulation X3b kick": {
+   "ns_per_frame": 488.9,
+   "pct_core_1": 2.16,
+   "spread_pct": 11.0
+  },
+  "44100 intensive modulation X1+X2+X3b": {
+   "ns_per_frame": 547.3,
+   "pct_core_1": 2.41,
+   "spread_pct": 6.7
+  },
+  "44100 intensive modulation V2.1 shipped source (GSX)": {
+   "ns_per_frame": 469.0,
+   "pct_core_1": 2.07
+  },
+  "48000 normal V2.1": {
+   "ns_per_frame": 473.1,
+   "pct_core_1": 2.27,
+   "spread_pct": 4.6,
+   "pct_core_8_measured": 18.9,
+   "pct_core_16_measured": 37.9
+  },
+  "48000 normal X1 core": {
+   "ns_per_frame": 478.3,
+   "pct_core_1": 2.3,
+   "spread_pct": 14.6
+  },
+  "48000 normal X2 motion": {
+   "ns_per_frame": 483.4,
+   "pct_core_1": 2.32,
+   "spread_pct": 11.6
+  },
+  "48000 normal X3b kick": {
+   "ns_per_frame": 490.5,
+   "pct_core_1": 2.35,
+   "spread_pct": 20.6
+  },
+  "48000 normal X1+X2+X3b": {
+   "ns_per_frame": 492.0,
+   "pct_core_1": 2.36,
+   "spread_pct": 5.3,
+   "pct_core_8_measured": 22.5,
+   "pct_core_16_measured": 39.7
+  },
+  "48000 normal V2.1 shipped source (GSX)": {
+   "ns_per_frame": 495.0,
+   "pct_core_1": 2.38
+  },
+  "48000 max drive V2.1": {
+   "ns_per_frame": 498.5,
+   "pct_core_1": 2.39,
+   "spread_pct": 21.3
+  },
+  "48000 max drive X1 core": {
+   "ns_per_frame": 486.4,
+   "pct_core_1": 2.33,
+   "spread_pct": 8.7
+  },
+  "48000 max drive X2 motion": {
+   "ns_per_frame": 516.9,
+   "pct_core_1": 2.48,
+   "spread_pct": 32.2
+  },
+  "48000 max drive X3b kick": {
+   "ns_per_frame": 508.8,
+   "pct_core_1": 2.44,
+   "spread_pct": 5.7
+  },
+  "48000 max drive X1+X2+X3b": {
+   "ns_per_frame": 547.4,
+   "pct_core_1": 2.63,
+   "spread_pct": 39.7
+  },
+  "48000 max drive V2.1 shipped source (GSX)": {
+   "ns_per_frame": 505.2,
+   "pct_core_1": 2.42
+  },
+  "48000 intensive modulation V2.1": {
+   "ns_per_frame": 501.8,
+   "pct_core_1": 2.41,
+   "spread_pct": 2.1
+  },
+  "48000 intensive modulation X1 core": {
+   "ns_per_frame": 518.6,
+   "pct_core_1": 2.49,
+   "spread_pct": 21.8
+  },
+  "48000 intensive modulation X2 motion": {
+   "ns_per_frame": 539.6,
+   "pct_core_1": 2.59,
+   "spread_pct": 6.3
+  },
+  "48000 intensive modulation X3b kick": {
+   "ns_per_frame": 518.8,
+   "pct_core_1": 2.49,
+   "spread_pct": 27.9
+  },
+  "48000 intensive modulation X1+X2+X3b": {
+   "ns_per_frame": 552.0,
+   "pct_core_1": 2.65,
+   "spread_pct": 14.3
+  },
+  "48000 intensive modulation V2.1 shipped source (GSX)": {
+   "ns_per_frame": 468.9,
+   "pct_core_1": 2.25
+  },
+  "96000 normal V2.1": {
+   "ns_per_frame": 379.1,
+   "pct_core_1": 3.64,
+   "spread_pct": 9.8,
+   "pct_core_8_measured": 30.6,
+   "pct_core_16_measured": 58.9
+  },
+  "96000 normal X1 core": {
+   "ns_per_frame": 376.5,
+   "pct_core_1": 3.61,
+   "spread_pct": 9.5
+  },
+  "96000 normal X2 motion": {
+   "ns_per_frame": 379.1,
+   "pct_core_1": 3.64,
+   "spread_pct": 4.2
+  },
+  "96000 normal X3b kick": {
+   "ns_per_frame": 411.1,
+   "pct_core_1": 3.95,
+   "spread_pct": 43.3
+  },
+  "96000 normal X1+X2+X3b": {
+   "ns_per_frame": 409.0,
+   "pct_core_1": 3.93,
+   "spread_pct": 9.2,
+   "pct_core_8_measured": 33.0,
+   "pct_core_16_measured": 64.3
+  },
+  "96000 normal V2.1 shipped source (GSX)": {
+   "ns_per_frame": 384.9,
+   "pct_core_1": 3.7
+  },
+  "96000 max drive V2.1": {
+   "ns_per_frame": 368.4,
+   "pct_core_1": 3.54,
+   "spread_pct": 12.0
+  },
+  "96000 max drive X1 core": {
+   "ns_per_frame": 389.2,
+   "pct_core_1": 3.74,
+   "spread_pct": 32.6
+  },
+  "96000 max drive X2 motion": {
+   "ns_per_frame": 387.8,
+   "pct_core_1": 3.72,
+   "spread_pct": 17.3
+  },
+  "96000 max drive X3b kick": {
+   "ns_per_frame": 413.4,
+   "pct_core_1": 3.97,
+   "spread_pct": 25.5
+  },
+  "96000 max drive X1+X2+X3b": {
+   "ns_per_frame": 425.4,
+   "pct_core_1": 4.08,
+   "spread_pct": 9.7
+  },
+  "96000 max drive V2.1 shipped source (GSX)": {
+   "ns_per_frame": 395.0,
+   "pct_core_1": 3.79
+  },
+  "96000 intensive modulation V2.1": {
+   "ns_per_frame": 405.0,
+   "pct_core_1": 3.89,
+   "spread_pct": 5.1
+  },
+  "96000 intensive modulation X1 core": {
+   "ns_per_frame": 408.1,
+   "pct_core_1": 3.92,
+   "spread_pct": 5.3
+  },
+  "96000 intensive modulation X2 motion": {
+   "ns_per_frame": 422.1,
+   "pct_core_1": 4.05,
+   "spread_pct": 6.9
+  },
+  "96000 intensive modulation X3b kick": {
+   "ns_per_frame": 423.6,
+   "pct_core_1": 4.07,
+   "spread_pct": 10.7
+  },
+  "96000 intensive modulation X1+X2+X3b": {
+   "ns_per_frame": 434.4,
+   "pct_core_1": 4.17,
+   "spread_pct": 13.4
+  },
+  "96000 intensive modulation V2.1 shipped source (GSX)": {
+   "ns_per_frame": 349.6,
+   "pct_core_1": 3.36
+  }
+ }
+}

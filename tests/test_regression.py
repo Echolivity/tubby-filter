@@ -386,3 +386,55 @@ def test_capture_tool_passes_reference_and_catches_faults(tmp_path):
     assert all(v["status"] == "PASS" for v in g.values())
     gain_sensitive = [k for k in b if k not in ("C10_leftonly_link_sep", "C12_silence_noise_floor")]
     assert all(b[k]["status"] == "FAIL" for k in gain_sensitive)
+
+
+# ================================================================ V2.2 research additions (part 7)
+@pytest.mark.parametrize("sr", [44100, 96000])
+@pytest.mark.parametrize("slope", [0, 1])
+def test_no_self_oscillation_at_maximum_resonance(v21, sr, slope):
+    """Q is capped at 8: every step must ring down (passive-filter behaviour, by design)."""
+    n = 2 * sr
+    x = np.zeros(n); x[sr // 4] = 0.5
+    for st in (1, 6, 11):
+        y, _ = v21.run(x, x, sr, dict(knob=st, reso=8, slope=slope, drive=0, click=0))
+        assert np.abs(y[sr // 4 + sr:]).max() < 1e-6, st          # < -120 dBFS one second later
+
+
+@pytest.mark.parametrize("sr", [44100, 96000])
+def test_maximum_drive_bounded_and_dc_free(v21, sr):
+    t = np.arange(2 * sr) / sr
+    sq = np.sign(np.sin(2 * np.pi * 50 * t))                       # full-scale square
+    y, _ = v21.run(sq, sq, sr, dict(knob=0, drive=100, comp=0, reso=8, outdb=12, click=0))
+    assert np.isfinite(y).all() and np.abs(y).max() <= 2.512
+    assert abs(np.mean(y[sr:])) < 1e-3                             # DC blocker active
+
+
+@pytest.mark.parametrize("sr", [44100, 96000])
+def test_rapid_cutoff_modulation_continuity(v21, sr):
+    n = sr
+    t = np.arange(n) / sr
+    x = 0.5 * np.sin(2 * np.pi * 220 * t)
+    kn = RNG.integers(0, 12, n).astype(float)                     # new step every sample
+    y, _ = v21.run(x, x, sr, dict(knob=kn, reso=8, click=0, glide=0))
+    assert np.isfinite(y).all() and np.abs(y).max() <= 2.512
+    y, _ = v21.run(x, x, sr, dict(knob=kn, reso=1.4, click=0, glide=20))   # with glide: no steps
+    d = np.abs(np.diff(y[sr // 2:]))
+    assert d.max() <= 1.5 * np.abs(np.diff(x)).max()
+
+
+def test_link_channels_are_independent(v21):
+    """Link: each side's output depends only on that side's input (stereo image integrity)."""
+    a = RNG.uniform(-.5, .5, 48000); b = RNG.uniform(-.5, .5, 48000)
+    yl, yr = v21.run(a, b, 48000, dict(stereo=0, knob=6, drive=60, reso=4))
+    yl_ref, _ = v21.run(a, a, 48000, dict(stereo=0, knob=6, drive=60, reso=4))
+    _, yr_ref = v21.run(b, b, 48000, dict(stereo=0, knob=6, drive=60, reso=4))
+    assert np.array_equal(yl, yl_ref) and np.array_equal(yr, yr_ref)
+
+
+@pytest.mark.parametrize("sr", [88200, 96000])
+def test_flat_clean_is_bit_transparent_at_native_rates(v21, sr):
+    """Transport start / abrupt signal after silence: FLAT + Drive 0 adds nothing."""
+    x = np.concatenate([np.zeros(sr // 2), RNG.uniform(-1, 1, sr)])
+    y1, y2 = v21.run(x, x, sr, dict(knob=0, drive=0, click=30))
+    s = int(0.02 * sr)
+    assert np.array_equal(y1[s:], x[s:]) and np.array_equal(y2[s:], x[s:])

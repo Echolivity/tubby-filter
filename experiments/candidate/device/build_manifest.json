@@ -1,0 +1,6 @@
+{
+ "version": "2.2.0-candidate (EXPERIMENTAL)",
+ "experiments/candidate/tubby_filter_v22_candidate.genexpr": "d359163cd3a7c5d7d4bad1e2b4007c00a4ea92924eec4480c775006432917f88",
+ "device/Tubby Filter.maxpat": "91572f50963b795ea9318e88d58e26ab0d2391cdd9e7526b2eea7c20185efcb8",
+ "device/Tubby Filter.amxd": "9b28f2fbfc95b31602293596cf19187592678309b98ef60ae1717fd4af469873"
+}
