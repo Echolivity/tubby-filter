@@ -42,10 +42,10 @@ def transition_artifact(y, sr, t_switch, win_ms=30, hp_hz=3000):
     return float(db(after)), float(db(before))
 
 
-def harmonic_alias(y, sr, f0, nharm=40):
+def harmonic_alias(y, sr, f0, nharm=40, f_audible=20000.0):
     """Split the spectrum of a steady sine response into fundamental, harmonics
-    (k·f0 below Nyquist) and aliasing (everything else). f0 must be bin-centred.
-    Returns (thd_db, alias_db) relative to the fundamental."""
+    (k·f0 below Nyquist) and aliasing (everything else below f_audible).
+    f0 must be bin-centred. Returns (harm_db, alias_db) relative to the fundamental."""
     n = len(y)
     w = signal.windows.blackmanharris(n)
     Y = np.abs(np.fft.rfft(y * w)) ** 2
@@ -60,10 +60,10 @@ def harmonic_alias(y, sr, f0, nharm=40):
     fund = Y[band(f0)].sum(); used[band(f0)] = True
     harm = 0.0
     for k in range(2, nharm + 1):
-        if k * f0 >= sr / 2 - guard * df:
+        if k * f0 >= min(sr / 2 - guard * df, f_audible):
             break
         harm += Y[band(k * f0)].sum(); used[band(k * f0)] = True
-    alias = Y[~used].sum()
+    alias = Y[(~used) & (f < f_audible)].sum()
     return 10 * math.log10(max(harm, 1e-300) / fund), 10 * math.log10(max(alias, 1e-300) / fund)
 
 

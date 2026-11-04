@@ -110,7 +110,7 @@ def _run(IN1, IN2, SRA, P, seed):
     xf = np.zeros(4)             # mono, dual, comp, bypass crossfades
     lf0 = math.log(20.0)
     lfL = lf0; lfR = lf0; wL = 0.0; wR = 0.0; pK = 0.0; pKR = 0.0
-    tL = 1.0; tR = 1.0; age = 0.0; ogs = 0.0; srp = 0.0; actp = 1.0
+    tL = 1.0; tR = 1.0; age = 0.0; ogs = 1.0; rw = 0.0; srp = 0.0; actp = 1.0
     nl1 = 0.0; nl2 = 0.0
     for i in range(n):
         sr = SRA[i]
@@ -119,7 +119,7 @@ def _run(IN1, IN2, SRA, P, seed):
         srp = sr; actp = active
         if rst:
             st[:] = 0.0; up[:] = 0.0; dn[:] = 0.0
-            ogs = 0.0; nl1 = 0.0; nl2 = 0.0
+            nl1 = 0.0; nl2 = 0.0
         os2 = sr < 60000
         fs = sr * 2 if os2 else sr
         age = 0.0 if rst else min(age + 1 / sr, 1.0)
@@ -129,7 +129,12 @@ def _run(IN1, IN2, SRA, P, seed):
         sm[1] = fx(sm[1] + (drive - sm[1]) * coef(20, sr)); dd = min(max(sm[1], 0), 100) * 0.01
         sm[2] = fx(sm[2] + (slope - sm[2]) * coef(10, sr)); sl = min(max(sm[2], 0), 1)
         sm[3] = fx(sm[3] + (blend - sm[3]) * coef(20, sr)); bl = min(max(sm[3], 0), 100) * 0.01
-        ogs = fx(ogs + (10 ** (outdb / 20) - ogs) * coef(20, sr)); og = ogs
+        if rst:
+            ogs = 10 ** (outdb / 20)
+        else:
+            ogs = fx(ogs + (10 ** (outdb / 20) - ogs) * coef(20, sr))
+        og = ogs
+        rw = 0.0 if rst else min(rw + 1 / (0.01 * sr), 1.0)
 
         # discrete crossfades (snap within 1e-7)
         mode = math.floor(stereo + 0.5)
@@ -139,14 +144,18 @@ def _run(IN1, IN2, SRA, P, seed):
         ms = (10.0, 20.0, 20.0, 10.0)
         for j in range(4):
             v = xf[j] + (tg[j] - xf[j]) * coef(ms[j], sr)
-            if abs(tg[j] - v) < 1e-7:
+            if rst or abs(tg[j] - v) < 1e-7:
                 v = tg[j]
             xf[j] = v if math.isfinite(v) else 0.0
         mw, dw, cw, bw = xf[0], xf[1], xf[2], xf[3]
 
         mono = (IN1[i] + IN2[i]) * 0.5
-        xL = IN1[i] if mw <= 0 else IN1[i] + (mono - IN1[i]) * mw
-        xR = IN2[i] if mw <= 0 else IN2[i] + (mono - IN2[i]) * mw
+        if mw <= 0:
+            xL = IN1[i]; xR = IN2[i]
+        elif mw >= 1:
+            xL = mono; xR = mono
+        else:
+            xL = IN1[i] + (mono - IN1[i]) * mw; xR = IN2[i] + (mono - IN2[i]) * mw
 
         G = 10 ** (dd * 18 / 20); b = 0.25 * dd; tb = math.tanh(b)
         s0 = G * (1 - tb * tb); sp = (math.tanh(G + b) - math.tanh(b - G)) * 0.5
@@ -195,6 +204,9 @@ def _run(IN1, IN2, SRA, P, seed):
             yL = chan(xL, G, b, tb, s0, sp, cw, amt, r5, gL, k, sl, weL, bl, st, 0)
             yR = chan(xR, G, b, tb, s0, sp, cw, amt, r5, gR, k, sl, weR, bl, st, 5)
         oL = yL * og; oR = yR * og
+        if rw < 1:
+            oL = IN1[i] + (oL - IN1[i]) * rw
+            oR = IN2[i] + (oR - IN2[i]) * rw
 
         chK = iL != pK; chKR = iRk != pKR
         pK = iL; pKR = iRk

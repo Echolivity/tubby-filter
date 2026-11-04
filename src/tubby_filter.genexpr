@@ -44,12 +44,13 @@ slew(x, ms) {
 }
 
 // one-pole crossfade weight for a discrete control: 0..1, snaps exactly
-// to its target once within 1e-7 so settled paths are bit-exact
-xfade(target, ms) {
+// to its target once within 1e-7 so settled paths are bit-exact, and
+// jumps straight to it on reset (load / sample-rate change / re-enable)
+xfade(target, ms, reset) {
     History y(0);
     c = 1 - exp(-1 / (max(ms, 0.01) * 0.001 * samplerate));
     n = y + (target - y) * c;
-    n = abs(target - n) < 1e-7 ? target : n;
+    n = (reset || abs(target - n) < 1e-7) ? target : n;
     n = fixnan(n);
     y = n;
     return n;
@@ -117,7 +118,8 @@ History wL(0), wR(0);              // FLAT -> filter weight
 History pK(0), pKR(0);             // previous knob / knobr steps
 History tL(1), tR(1);              // s since last switch, per channel
 History age(0);                    // s since load / reset
-History ogs(0);                    // smoothed output gain
+History ogs(1);                    // smoothed output gain
+History rw(0);                     // dry -> processed ramp after reset
 History srp(0), actp(1);           // previous sample rate / active
 History nl1(0), nl2(0);            // click noise filters
 History dxL(0), dyL(0), c1L(0), c2L(0), opL(0);   // left DSP state
@@ -153,21 +155,25 @@ q   = max(slew(reso, 20), 0.5);
 dd  = clamp(slew(drive, 20), 0, 100) * 0.01;
 sl  = clamp(slew(slope, 10), 0, 1);
 bl  = clamp(slew(blend, 20), 0, 100) * 0.01;
-og  = fx(keep * ogs + (dbtoa(outdb) - keep * ogs) * (1 - exp(-1 / (20 * 0.001 * sr))));
+og  = rst ? dbtoa(outdb) : fx(ogs + (dbtoa(outdb) - ogs) * (1 - exp(-1 / (20 * 0.001 * sr))));
 ogs = og;
+// after a reset the output crossfades from the unprocessed input (what Live
+// passes while the device is off) to the processed signal over 10 ms
+nrw = rst ? 0 : min(rw + 1 / (0.01 * sr), 1);
+rw = nrw;
 
 // ---- discrete controls -> click-free weights (V2.1)
 mode = floor(stereo + 0.5);
 dual = mode == 1;
-mw  = xfade(mode == 2, 10);        // Link/Dual -> Mono input sum
-dw  = xfade(dual, 20);             // right side follows knobr
-cw  = xfade(comp > 0.5, 20);       // Peak (0) <-> Unity (1)
-bw  = xfade(drvonly > 0.5, 10);    // filter -> drive-only
+mw  = xfade(mode == 2, 10, rst);         // Link/Dual -> Mono input sum
+dw  = xfade(dual, 20, rst);              // right side follows knobr
+cw  = xfade(comp > 0.5, 20, rst);        // Peak (0) <-> Unity (1)
+bw  = xfade(drvonly > 0.5, 10, rst);     // filter -> drive-only
 
 // ---- input routing
 mono = (in1 + in2) * 0.5;
-xL = mw <= 0 ? in1 : mix(in1, mono, mw);
-xR = mw <= 0 ? in2 : mix(in2, mono, mw);
+xL = mw <= 0 ? in1 : (mw >= 1 ? mono : mix(in1, mono, mw));
+xR = mw <= 0 ? in2 : (mw >= 1 ? mono : mix(in2, mono, mw));
 
 // ---- drive constants: 0..+18 dB pre-gain, bias grows with drive
 G   = dbtoa(dd * 18);
@@ -254,9 +260,11 @@ if (os2) {
 dxL = sdxL; dyL = sdyL; c1L = s1L; c2L = s2L; opL = soL;
 dxR = sdxR; dyR = sdyR; c1R = s1R; c2R = s2R; opR = soR;
 
-// ---- output gain
+// ---- output gain, then the post-reset dry -> processed ramp
 oL = yL * og;
 oR = yR * og;
+oL = nrw >= 1 ? oL : mix(in1, oL, nrw);
+oR = nrw >= 1 ? oR : mix(in2, oR, nrw);
 
 // ---- switch transient
 // Fires when a step control actually moves: Filter on the left (and on the

@@ -1,58 +1,111 @@
-# DSP architecture
+# Tubby Filter 2.1 — DSP architecture
 
-All DSP lives in one gen~ codebox (`src/tubby_filter.genexpr`), compiled by Max to native code. The device has no lookahead, no buffers and no oversampling, so its **latency is 0 samples**.
+The source of truth is `src/tubby_filter.genexpr`, a single gen~ codebox embedded in the device by `src/build_device.py`. Every statement below describes that file. The numbers marked **[sim]** come from `tests/measure_v21.py`, which runs that source through GSX, not through gen~ (see `TEST_METHODOLOGY.md`).
+
+## 1. Signal flow
 
 ```
-in L ─┐              ┌─ drive ─ HP 2-pole ─┬─ 1-pole HP ─┐
-      ├─ stereo mode ┤   (cal)   TPT SVF   └─────────────┴─ slope xfade ─ FLAT/IN xfade ─┐
-in R ─┘ (Link/Dual/  └─ drive ─ HP 2-pole ─ … (same, own state, own cutoff in Dual)      │
-         Mono)                                                                           │
-                       dry ───────────────────────────────────────── Mix ─ Output ─ + switch transient
-                                                                                     ─ safety knee ─ NaN guard ─ out
+in1,in2 ─► stereo routing ─┬─► (host < 60 kHz) 2× up ─► CHAN ─► CHAN ─► 2× down ─┐
+ (Link / Dual / Mono,      │                          (two sub-samples)          ├─► × Output ─► post-reset ─► + switch ─► safety ─► out1,out2
+  10 ms crossfade)         └─► (host ≥ 60 kHz) ───────► CHAN ────────────────────┘    gain (20 ms) dry ramp   transient  knee
+                                                                                                    (10 ms)
+
+CHAN (per channel, per sample at the internal rate):
+  x ─► drive: tanh(G·x+b) − tanh(b), ÷ Unity or Peak divisor (20 ms crossfade) ─► 5 Hz DC block ─► fade-in by drive amount
+    ─► 2-pole TPT SVF high-pass ─► (+ 1-pole TPT HP, slope crossfade) ─► FLAT/bypass crossfade ─► Mix with x
 ```
 
-## 1. Stereo routing
-- **Link**: both channels get the same step, the same smoothed cutoff and the same coefficients. Measured: identical input on L and R gives bit-identical L/R output. Each side of a stereo signal is processed exactly as a mono signal would be, so the stereo image cannot move.
-- **Dual**: separate step (`knobr`), separate frequency glide and separate FLAT crossfade on the right side. All other controls are shared.
-- **Mono**: `(L+R)/2` feeds both channels, so the output is bit-identical L = R.
-- The filter, DC-blocker and slew states are always per channel, so switching between modes never shares state.
+The dry signal for **Mix** is taken inside the oversampled domain, so dry and wet pass through the same half-band filters and stay phase-aligned at any Mix setting.
 
-## 2. Console drive
-The transfer function is
+## 2. Parameters
 
-    s(x)  = tanh(G·x + b) − tanh(b)          G = 10^(18·d/20), b = 0.25·d, d = Drive/100
+| Control (panel) | gen~ Param | Range | Behaviour |
+|---|---|---|---|
+| Filter | `knob` | 0–11 | Step index: FLAT, 70, 100, 150, 250, 500, 1k, 2k, 3k, 5k, 7.5k, 10k Hz. Rounded to the nearest step. |
+| Filter R | `knobr` | 0–11 | Right-channel step; only active in Dual. |
+| Reso | `reso` | 0.5–8 | Q of the 2-pole section. 20 ms smoothing. |
+| Drive | `drive` | 0–100 % | Pre-gain 0 to +18 dB. 20 ms smoothing. |
+| Output | `outdb` | −24 to +12 dB | 20 ms smoothing. |
+| Glide | `glide` | 0–2000 ms | Time constant of the filter-frequency glide (log domain). Minimum 0.5 ms. |
+| Click | `click` | 0–100 % | Level of the switch transient. |
+| Mix | `blend` | 0–100 % | Dry/wet. 20 ms smoothing. |
+| Slope | `slope` | 12 / 18 dB | 10 ms crossfade between the two outputs. |
+| Stereo | `stereo` | Link / Dual / Mono | See §5. |
+| Drive Cal | `comp` | Peak / Unity | See §4. 20 ms crossfade. |
+| Mode | `drvonly` | Filter / Drive | Drive = filter bypassed. 10 ms crossfade. |
+| *(internal)* | `active` | 0/1 | Device on/off state from `live.thisdevice`. Not a user control. |
 
-- The **bias b** makes the curve asymmetric, which produces even harmonics as well as odd ones. Subtracting `tanh(b)` keeps zero in giving zero out.
-- **Unity calibration** (default) divides by the slope at the origin, `s'(0) = G·(1 − tanh²b)`. Small-signal gain is then exactly 1 (0.00 dB measured at every drive setting). Larger signals compress: the output ceiling is roughly `(1 − tanh b)/s'(0)`.
-- **Peak calibration** divides by `(tanh(G+b) − tanh(b−G))/2`, the mean full-scale output. A 0 dBFS input stays within about ±2.6 dB of 0 dBFS, and low-level gain rises with drive (up to +17.5 dB).
-- The bias leaves a small DC offset on loud asymmetric material. A **5 Hz one-pole DC blocker** removes it. This matters in FLAT and Drive-only mode, where the high-pass is not doing that job.
-- **Drive 0 is a clean path**: the shaper is faded in over the first 12.5 % of the Drive range (`amt = clamp(8d, 0, 1)`), so 0 % gives a bit-exact dry signal.
-- **Aliasing**: there is no oversampling. tanh with up to +18 dB pre-gain aliases audibly on bright, hot material at 44.1/48 kHz. This is a deliberate trade for zero latency and low CPU. Oversampling in M4L means `poly~ @resampling`, which adds latency and uses Max's fixed resampling filters, so it was not added.
+All V2 parameter names, ranges and meanings are unchanged.
 
 ## 3. Filter
-- **Topology**: a 2-pole TPT (topology-preserving transform, zero-delay feedback) state-variable filter, high-pass output, Zavalishin form. For the 18 dB slope a TPT one-pole high-pass is added at the same cutoff. The slope switch crossfades between the two outputs over a 10 ms time constant, so changing slope never clicks.
-- **Why this topology was kept**: the coefficients are a closed-form function of cutoff and Q, it is unconditionally stable for any `k = 1/Q > 0` and any cutoff (including while the cutoff is being modulated per sample), and it is cheap. The alternatives were biquad direct forms, which have state-dependent transients and can blow up under fast coefficient changes, and a ladder, which is a low-pass structure and needs more CPU for a high-pass. Neither is an improvement for a switched high-pass.
-- **Cutoff mapping**: `g = tan(π·fc/sr)` (bilinear prewarp). This is exact at fc at any sample rate.
-- **Measured limitation**: bilinear frequency warping makes the 5k/7.5k/10k steps slightly sharper at 44.1/48 kHz than an ideal analog filter. The worst case at the resonant peak or above is 2.9 dB, and up to 4.5 dB deeper in the skirt at −20 dB. Steps up to 3 kHz stay within 0.4 dB. Adjusting the damping does not fix this, because it comes from warping of the frequency axis itself. This was tested and documented rather than patched.
-- **Steps**: FLAT plus 70, 100, 150, 250, 500, 1k, 2k, 3k, 5k, 7.5k and 10k Hz, unchanged from v1. Spacing is dense where dub mixing works (bass and kick region) and wide at the top. FLAT parks the cutoff at 20 Hz and crossfades to the dry path.
 
-## 4. Switching and glide
-- The frequency moves in the **log domain** through a one-pole slew. With Glide = 0 its time constant is a fixed **0.5 ms** floor, which keeps the step abrupt and identical at every sample rate. In v1 the jump took exactly one sample, so its sharpness depended on the sample rate.
-- **FLAT ↔ filter** crossfades over `max(4 ms, Glide)`.
-- In the passband, step changes cause no level jumps: passband gain at 20 kHz is 0.00 dB for every step from 70 Hz to 7.5 kHz (Q 0.707).
+- **Topology** (unchanged from V2): 2-pole TPT state-variable high-pass (Zavalishin), plus a TPT 1-pole high-pass at the same cutoff for 18 dB/oct. The cutoff is set with `g = tan(π·fc/fs)`. It is stable for any Q > 0 under per-sample modulation.
+- **Cause of the V2 high-frequency deviation**: the bilinear transform maps the analog frequency axis onto 0…fs/2 non-linearly. Prewarping makes the response exact *at* fc, but the shape around and below fc is compressed as fc approaches fs/2. At 44.1 kHz the 10 kHz step sits at 0.23·fs, which gave up to 4.48 dB of error in the skirt and 2.88 dB around the peak **[sim]**. Changing the damping can't correct this: it was tested in V2 and it moves the peak, not the axis.
+- **Fix**: run the filter at an internal rate of at least 88.2 kHz. Below 60 kHz the drive and filter run 2× oversampled, so 44.1 behaves exactly like 88.2, and 48 like 96. Worst deviation from the analog prototype at every supported rate is now ≤ 1.01 dB **[sim]**. The remaining error is on the 10 kHz step only; steps up to 3 kHz are within 0.1 dB. Nothing is tuned for one rate: 88.2, 96, 176.4 and 192 kHz run the same code natively.
 
-## 5. Switch transient (design choice, not a measurement of any real switch)
-- **Source**: uniform noise, scaled by `√(sr/44100)` so its in-band density is independent of sample rate, then band-limited 500 Hz–5 kHz with two one-pole filters whose cutoffs are set in Hz.
-- **Envelope**: three decaying bursts at 0, 1.1 and 2.6 ms, with amplitudes 1, 0.45 and 0.20 and τ = 0.7 ms. This imitates contact bounce. All times are in seconds, so the envelope is the same at every rate.
-- Each channel's transient fires only when that channel's step changes. In Link mode both fire together with the same noise, so the click stays centred.
-- The transient is muted when Glide > 0, in Drive mode, and for the first 200 ms after load.
+## 4. Drive
 
-## 6. Output stage and protection
-- Mix, then Output gain (one-pole smoothed, 20 ms), then the transient, then a **safety knee**. The knee is bit-transparent below +6 dBFS and soft-clips towards a +8 dBFS ceiling. It is only there to catch runaway resonance combined with drive and +12 dB output. Normal programme never reaches it.
-- **NaN/Inf**: every recursive state passes through `fixnan(fixdenorm())`, and so does each output. Injecting NaN or Inf at the input yields 0 for those samples, after which the filter recovers. This was tested.
-- **Denormals**: `fixdenorm` on every state. After an impulse, 5 s of silence decays below −400 dBFS with no subnormal values in the output.
+```
+s(x)  = tanh(G·x + b) − tanh(b)        G = 10^(18·d/20),  b = 0.25·d,  d = Drive/100
+Unity:  y = s(x) / [G·(1 − tanh²b)]                    small-signal gain exactly 1
+Peak:   y = s(x) / [(tanh(G+b) − tanh(b−G)) / 2]       full scale in ≈ full scale out
+```
 
-## 7. Parameter smoothing and persistence
-- Reso, Drive and Mix are smoothed over 20 ms, Slope over 10 ms, and Output over 20 ms (45 ms from 10 % to 90 %, measured at all four rates). Mode and Stereo switch instantly, because their effect is already crossfaded.
-- `live.thisdevice` re-sends every control's value into gen~ when the device loads, so a restored set always reaches the DSP. Parameter values are saved by Live.
-- **Compatibility**: the v1 parameter long names and ranges are kept: *Tubby Filter*, *Reso*, *Drive*, *Glide*, *Click*, *Mix*, *Slope*. *Tubby Filter* is still a 12-item enum, now drawn as a big stepped dial instead of a menu.
+- Changing Drive Cal crossfades between the two divisors over 20 ms. When settled, the crossfade snaps exactly to 0 or 1, so the path is bit-identical to V2.
+- `amt = clamp(8d, 0, 1)` fades the shaper in over the first 12.5 % of the Drive range, so Drive 0 is a clean path.
+- A 5 Hz DC blocker removes the offset the bias creates.
+- **Aliasing**: measured **[sim]** at 44.1 kHz with a −6 dBFS tone at Drive 50 %. The 7 kHz tone went from −34 dB (V2) to −81 dB (V2.1) and the 11 kHz tone from −19 dB to −53 dB, counting only energy below 20 kHz. Aliasing at 96 kHz host rate is unchanged, because no oversampling runs there; it already had the benefit of the higher rate.
+- **Character**: harmonics 2–7 of a 100 Hz tone at 48 kHz match V2 within **0.001 dB [sim]**. The drive curve itself was not changed.
+
+## 5. Stereo
+
+- **Link**: both channels use the left step. When settled, the right channel's frequency and weight are copied from the left, so identical input gives bit-identical output.
+- **Dual**: the right channel uses Filter R. Switching between Link and Dual moves the right channel's target frequency through a 20 ms log-domain crossfade, then through the normal glide.
+- **Mono**: (L+R)/2 feeds both channels through a 10 ms crossfade. When settled, both sides use exactly the same input, so L = R bit for bit.
+- There is no crosstalk in Link or Dual: an input only on L gives exactly 0 on R **[sim]**.
+
+## 6. Click / Glide interaction (defined precisely)
+
+- The **switch transient fires once per step change of a step control**, on the channel that control drives:
+  - Filter: left channel, and right channel in Link and Mono.
+  - Filter R: right channel, in Dual only.
+- **Glide has no effect on the transient.** Glide sets how the filter *frequency* moves; Click is the sound of the switch itself. Both happen independently, at any Glide value. For a silent glide, set Click to 0.
+- **It never fires on**: stereo-mode changes (including Link→Dual moving the right cutoff), device load, sample-rate change, re-activation, Filter R moves in Link or Mono, or Drive mode.
+- **Rapid stepping**: each new step restarts the burst envelope, so bursts never stack. Stepping every 2 ms peaks within 1.6× of a single step **[sim]**.
+- **Sound**: band-limited noise (500 Hz–5 kHz), three decaying bursts at 0, 1.1 and 2.6 ms. Level and spectrum are independent of sample rate.
+- **Change from V2**: V2 silenced Click whenever Glide > 0, which contradicted V2's own manual in places and made Click unusable with Glide. V2.1 follows the rule above.
+
+## 7. Discrete-control transitions
+
+| Control | Mechanism | Worst artefact **[sim]**, 100 Hz at −12 dBFS, content > 3 kHz |
+|---|---|---|
+| Stereo Link→Mono | 10 ms input crossfade | −76.6 dBFS (V2: −24.0) |
+| Stereo Link↔Dual | 20 ms right-frequency crossfade | −112 to −128 dBFS (V2: −63 to −83) |
+| Drive Cal Unity↔Peak | 20 ms divisor crossfade | −71.3 dBFS (V2: −11.8) |
+| Mode Filter→Drive | 10 ms bypass crossfade | −71.2 dBFS (V2: −63.4) |
+| Slope | 10 ms crossfade (unchanged) | −111.5 dBFS |
+| Filter step, Click 0 | 0.5 ms log glide floor (unchanged) | −64.8 dBFS. This is the **intended hard-switch character**, kept from V2. |
+
+## 8. Oversampling
+
+- **Filter**: polyphase IIR half-band, two branches of 4 first-order allpass sections each (8 coefficients, transition 0.04), designed by `tools/halfband.py`. The coefficients are embedded in the source and checked by the tests.
+- **Response [sim]**: stopband −99 dB; passband flat within 0.0001 dB to 20 kHz at 44.1 and 48 kHz.
+- **Cost**: the half-band filters have a non-linear phase. Measured group delay at 44.1 kHz is **3.1 samples at 1 kHz** (0.07 ms), 4.1 at 10 kHz and 10.2 at 18 kHz. The device does not report this to Live; see Known limitations.
+- **Why 2× and only below 60 kHz**: 2× brings the internal rate to 88.2/96 kHz, which fixes the filter warping and cuts audible aliasing by 30–70 dB for typical settings. Higher factors would cost more CPU for gains only at extreme drive on very high tones. At 88.2 kHz and above the host rate is already high enough, so oversampling there would add CPU without solving a measured problem.
+
+## 9. State, resets and numerical safety
+
+- **Explicit-state kernels**: each History is read at the start of a frame and written once. The GSX lint rejects any read-after-write, so the code doesn't depend on unspecified gen~ semantics.
+- **Every state write** passes `fixnan(fixdenorm())`. NaN or Inf at the input yields 0 for those samples and the filter recovers. A silence tail decays with no subnormal values **[sim]**.
+- **Reset** happens on the first frame, on a sample-rate change, and when `active` goes 0→1. All filter, half-band and DC states are zeroed, and the crossfade weights jump to their targets. The output then crossfades from the unprocessed input to the processed signal over 10 ms. The switch transient is muted for 200 ms.
+- **Safety knee**: bit-transparent below +6 dBFS, with a soft ceiling at +8 dBFS. Every extreme or random-automation run peaked at ≤ +8.0 dBFS **[sim]**.
+- **Transport**: the device has no transport dependency. It keeps processing when the transport stops, as an analog unit would, so a resonant tail rings out naturally.
+
+## 10. Known limitations
+
+1. **Unreported latency at 44.1/48 kHz**: there are about 3 samples of group delay in the oversampler (frequency-dependent, 0.07 ms at 1 kHz). Live's delay compensation is not told about it. In a parallel setup where the device is summed with an uncompensated copy, expect slight cancellation above roughly 10 kHz. Reporting a fixed latency would not make a non-linear-phase filter phase-coherent.
+2. **Aliasing is reduced, not removed**: at Drive 100 % on a 15 kHz tone at −6 dBFS it is still about −18 dB at 44.1 kHz and −25 dB at 48/96 kHz **[sim]**. Real material rarely has full-scale content there, but extreme drive on bright sources will alias.
+3. **Top step accuracy**: the 10 kHz step deviates from the analog prototype by up to 1.0 dB in the skirt at 44.1/88.2 kHz, and 0.85 dB at 48/96 kHz.
+4. **Unity calibration compresses loud material** at high drive (by design). Use Output to make up level.
+5. **Rate-change hand-over**: when the sample rate changes, the restart produces one sample step of up to about 2× normal signal motion. Live interrupts the audio stream at that moment anyway.
+6. **Not yet verified in gen~ or Live.** Whether gen~ compiles this source, and how it behaves in Live, has not been tested (see `validation/LIVE_VALIDATION.md`).

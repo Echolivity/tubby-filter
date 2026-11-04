@@ -1,52 +1,60 @@
-# Tubby Filter v2
+# Tubby Filter 2.1
 
-A stepped dub high-pass filter with console drive, for Ableton Live (Max for Live audio effect).
-It is inspired by the switched high-pass on King Tubby's mixing desk. It is a character model built for live performance, not a circuit-accurate clone.
+A stepped dub high-pass filter with console drive, for Ableton Live (Max for Live audio effect). It is inspired by the switched high-pass on King Tubby's mixing desk. It is a character model, not a circuit clone.
+
+> **Release status: candidate, not certified.** Every automated test passes on the shipped source, run through an independent executor. The device has **not** yet been run in Max or Ableton Live. See `docs/RELEASE_CHECKLIST.md` and `validation/LIVE_VALIDATION.md`.
 
 ## Install
-
-Drag `device/Tubby Filter.amxd` onto an audio track or return.
-If Live refuses the file, open `device/Tubby Filter.maxpat` in Max and choose **File → Save As Device…**. As a last resort, rebuild it by hand from `src/tubby_filter.genexpr` (see *Manual rebuild* below).
+Drag `device/Tubby Filter.amxd` onto an audio track. If Live rejects it, open `device/Tubby Filter.maxpat` in Max and choose **File → Save As Device…**.
 
 ## Controls
+The controls are the same as in V2. The only behaviour change you'll notice is Click (see below).
 
 | Control | What it does |
 |---|---|
-| **Filter** (big knob) | Stepped high-pass: FLAT · 70 · 100 · 150 · 250 · 500 · 1k · 2k · 3k · 5k · 7.5k · 10k Hz. FLAT takes the filter out. |
-| **Filter R** | Right-side cutoff. Only active when Stereo = **Dual**. |
-| **Reso** | Resonance (Q 0.5–8). 0.707 gives no peak; 1.4 is the default "desk" bump; 4–8 whistles. |
-| **Drive** | Console saturation, 0–+18 dB into the shaper. 0 % is a perfectly clean path. |
-| **Output** | Output level, −24 to +12 dB. |
-| **Glide** | 0 ms = hard switched, with the switch transient. Above 0, steps sweep over that many ms with no transient. |
-| **Click** | Level of the switch transient. Only heard when Glide = 0. |
+| **Filter** (big knob) | Stepped high-pass: FLAT · 70 · 100 · 150 · 250 · 500 · 1k · 2k · 3k · 5k · 7.5k · 10k Hz. |
+| **Filter R** | Right-side cutoff; only active in Stereo = Dual. |
+| **Reso** | Resonance, Q 0.5–8. |
+| **Drive** | Console saturation, 0 to +18 dB into the shaper. 0 % is clean. |
+| **Output** | −24 to +12 dB. |
+| **Glide** | How the filter frequency moves between steps. 0 = hard switch; higher values glide over that many ms. |
+| **Click** | Level of the switch "clunk". It sounds on **every** step move, whatever the Glide setting. Set it to 0 for silent moves. |
 | **Mix** | Dry/wet. |
-| **Slope** | 12 or 18 dB/octave. |
-| **Stereo** | **Link**: both sides identical. **Dual**: Filter sets left, Filter R sets right. **Mono**: sums L+R first, which suits mono sources on a stereo track. |
-| **Drive Cal** | **Unity**: quiet material keeps its level at any drive setting, and loud peaks get squashed. **Peak**: full-scale stays near full-scale, and quiet material comes up, like pushing a desk. |
-| **Mode** | **Filter**: normal. **Drive**: filter bypassed, drive stage only. |
+| **Slope** | 12 or 18 dB/oct. |
+| **Stereo** | **Link**: both sides identical. **Dual**: Filter R sets the right side. **Mono**: sums L+R first. Switching between modes is click-free. |
+| **Drive Cal** | **Unity**: quiet material keeps its level. **Peak**: full-scale stays full-scale. Switching is click-free. |
+| **Mode** | **Drive**: filter bypassed, drive only. |
 
-## Playing it
+At 44.1 and 48 kHz the drive and filter run 2× oversampled, so the filter's top steps and the drive's aliasing behave the same as at 88.2/96 kHz. This adds about 0.07 ms of delay, which is not reported to Live.
 
-- Map **Filter** to a hardware encoder or knob. Hard switching is the classic move: throw a drum bus or skank up to 1k–3k for a bar, then drop back to FLAT.
-- For the "riding the knob" sweep, set Glide to 150–400 ms and turn Reso up to around 3.
-- With Drive above 50 % and Drive Cal = Unity, loud hits lose level. That is by design (see the measurements). Use **Output** to make up the gain.
-- The Click transient is muted for the first 200 ms after the device loads, so restoring a set never clicks.
-
-## Files
+## Repository
 
 ```
-device/   Tubby Filter.amxd, Tubby Filter.maxpat      (the device)
-src/      tubby_filter.genexpr   gen~ DSP (the single source of truth)
-          build_device.py        regenerates device/ from the .genexpr
-tests/    model.py               line-by-line Python model of v1 and v2
-          measure.py             every measurement in docs/ (python3 measure.py)
-docs/     DSP_ARCHITECTURE.md, CHANGES.md, MEASUREMENTS.md, results.json, img/
-v1/       the original files, unchanged
+src/        tubby_filter.genexpr   the DSP (single source of truth)
+            build_device.py        deterministic build -> device/
+device/     Tubby Filter.amxd / .maxpat, build_manifest.json (SHA-256)
+tools/      gsx.py                 runs the GenExpr source (for testing; not gen~)
+            halfband.py            oversampler filter design
+tests/      test_regression.py     90 automated tests (pytest)
+            model_v21.py           independent reference model
+            measure_v21.py         full measurement report -> reports/
+            baseline_v2.py         V2 "before" measurements -> reports/
+            metrics.py             shared analysis
+validation/ LIVE_VALIDATION.md     Live test procedure and checklist (not yet performed)
+            make_signals.py, cases.py, compare_capture.py   capture kit: Live renders vs reference
+reports/    MEASUREMENTS_V21.md, *.json, img/
+docs/       DSP_ARCHITECTURE.md, TEST_METHODOLOGY.md, CHANGELOG.md, RELEASE_CHECKLIST.md
+legacy/v2/  untouched V2 source (hash-pinned), V2 docs and scripts
 ```
 
-## Manual rebuild
+## Build and test
+Requires Python 3.10+ with `numpy scipy numba matplotlib pytest`.
 
-1. In Live, create a new **Max Audio Effect** and open it in Max.
-2. Put `[gen~]` between `[plugin~]` and `[plugout~]`, with left to left and right to right.
-3. Inside the gen~, create a `codebox` with two inlets and two outlets, and paste in the contents of `src/tubby_filter.genexpr`.
-4. Add a `live.*` control for each parameter. Send its output through `[prepend <name>]` into gen~'s left inlet. The parameter names are `knob knobr reso drive outdb glide click blend slope stereo comp drvonly`.
+```
+python3 src/build_device.py               # rebuild device/ (byte-identical for the same source)
+python3 -m pytest -q tests                # 90 tests, about 1 minute
+python3 tests/measure_v21.py              # regenerate reports/ (about 90 s)
+python3 validation/make_signals.py 48000  # capture-kit signals for Live testing
+```
+
+Edit only `src/tubby_filter.genexpr`, then rebuild. A test fails if the shipped device doesn't match a fresh build.

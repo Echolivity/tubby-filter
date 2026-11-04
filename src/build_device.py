@@ -1,12 +1,18 @@
 """Builds 'Tubby Filter.maxpat' and 'Tubby Filter.amxd' from tubby_filter.genexpr.
 
-python3 build_device.py  ->  ../device/
-The .amxd is the same patcher wrapped in Live's device container.
+python3 build_device.py [outdir]   (default ../device/)
+The .amxd is the same patcher wrapped in Live's device container:
+  "ampf" <u32 LE 4> "aaaa"  |  "meta" <u32 LE 4> 00000000  |  "ptch" <u32 LE n> <patcher JSON> NUL
+(chunk layout as read by Ableton's maxdevtools/maxdiff/amxd_textconv.py).
+The build is deterministic: same source -> byte-identical outputs. A
+build_manifest.json with SHA-256 hashes is written next to the outputs.
 """
-import json, os, struct
+import hashlib, json, os, struct, sys
+
+VERSION = "2.1.0"
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "..", "device")
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "..", "device")
 os.makedirs(OUT, exist_ok=True)
 code = open(os.path.join(HERE, "tubby_filter.genexpr")).read()
 APP = {"major": 8, "minor": 6, "revision": 0, "architecture": "x64", "modernui": 1}
@@ -59,10 +65,10 @@ def comment(i, text, px, py, w=80, size=9.0, color=CREAM, bold=0):
                           "patching_rect": [700, 60 + len(boxes) * 2, w, 18]}})
 
 comment("title", "TUBBY FILTER", 8, 4, 120, 10.5, AMBER, 1)
-comment("sub", "stepped hi-pass · console drive", 8, 152, 200, 8.0)
+comment("sub", "stepped hi-pass · console drive · v2.1", 8, 152, 220, 8.0)
 
 obj("plugin", "plugin~", 2, 2, 30, 330, 60, ["signal", "signal"])
-boxes.append({"box": {"id": "gen", "maxclass": "newobj", "text": "gen~ @title tubby_v2", "numinlets": 2,
+boxes.append({"box": {"id": "gen", "maxclass": "newobj", "text": "gen~ @title tubby_v2_1", "numinlets": 2,
                       "numoutlets": 2, "outlettype": ["signal", "signal"], "patching_rect": [30, 380, 220, 22],
                       "patcher": gen}})
 obj("plugout", "plugout~", 2, 0, 30, 430, 60)
@@ -71,6 +77,10 @@ link("gen", 0, "plugout", 0); link("gen", 1, "plugout", 1)
 
 # load-time push: every control re-sends its value into gen~ when the device opens
 obj("thisdev", "live.thisdevice", 1, 3, 30, 10, 100, ["bang", "int", "int"])
+# device on/off state (middle outlet) -> gen~ 'active': DSP state is reset when
+# the device is switched back on, so stale filter state cannot click
+obj("active-p", "prepend active", 1, 1, 150, 40, 100)
+link("thisdev", 1, "active-p", 0); link("active-p", 0, "gen", 0)
 UI = []
 x = [30]
 
@@ -137,7 +147,7 @@ tab("mode", "Mode", ["Filter", "Drive"], 0, 104, "drvonly", "Drive = filter bypa
 
 patch = {"patcher": {"fileversion": 1, "appversion": APP, "classnamespace": "box",
                      "rect": [60, 60, 1200, 520], "openinpresentation": 1, "devicewidth": 424.0,
-                     "description": "Tubby Filter v2 — stepped dub high-pass with console drive",
+                     "description": f"Tubby Filter {VERSION} — stepped dub high-pass with console drive",
                      "boxes": boxes, "lines": lines}}
 js = json.dumps(patch, indent=1)
 open(os.path.join(OUT, "Tubby Filter.maxpat"), "w").write(js)
@@ -145,4 +155,12 @@ body = js.encode() + b"\x00"
 amxd = (b"ampf" + struct.pack("<I", 4) + b"aaaa" + b"meta" + struct.pack("<I", 4) + b"\x00" * 4 +
         b"ptch" + struct.pack("<I", len(body)) + body)
 open(os.path.join(OUT, "Tubby Filter.amxd"), "wb").write(amxd)
-print(f"built: {len(boxes)} boxes, {len(lines)} lines, {len(amxd)} bytes")
+
+def sha(b):
+    return hashlib.sha256(b).hexdigest()
+manifest = {"version": VERSION,
+            "src/tubby_filter.genexpr": sha(code.encode()),
+            "device/Tubby Filter.maxpat": sha(js.encode()),
+            "device/Tubby Filter.amxd": sha(amxd)}
+open(os.path.join(OUT, "build_manifest.json"), "w").write(json.dumps(manifest, indent=1) + "\n")
+print(f"built {VERSION}: {len(boxes)} boxes, {len(lines)} lines, {len(amxd)} bytes, amxd sha256 {sha(amxd)[:16]}")
