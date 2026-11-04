@@ -79,7 +79,7 @@ class P:
             k, v, ln = self.peek()
             if v == "Param":
                 params.append(self.param())
-            elif k == "id" and self.peek(1)[1] == "(" and self._is_funcdef():
+            elif k == "id" and v not in ("if", "for", "while") and self.peek(1)[1] == "(" and self._is_funcdef():
                 name, args, stmts = self.funcdef()
                 funcs[name] = (args, stmts)
             else:
@@ -232,6 +232,10 @@ class P:
         raise SyntaxError(f"line {ln}: unexpected {v!r}")
 
 
+class SemanticsError(Exception):
+    pass
+
+
 # ----------------------------------------------------------------- codegen
 CONST = {"pi": "math.pi", "twopi": "(2.0*math.pi)", "halfpi": "(0.5*math.pi)",
          "e": "math.e", "samplerate": "SR"}
@@ -255,6 +259,7 @@ class Gen:
         self.init = []           # state init before loop
         self.n = 0
         self.locals = set()
+        self.written = set()     # History vars already written this frame
 
     def tmp(self):
         self.n += 1
@@ -284,7 +289,12 @@ class Gen:
         if k == "var":
             v = e[1]
             if v in env:
-                return env[v]
+                pv = env[v]
+                if pv.startswith("H_") and pv in self.written:
+                    raise SemanticsError(
+                        f"History '{v}' is read after being written in the same frame; "
+                        "gen~ semantics for this are not relied upon (portability lint)")
+                return pv
             if v in CONST:
                 return CONST[v]
             if v in ("in1", "in2"):
@@ -377,6 +387,8 @@ class Gen:
                         env[nm] = f"{pre}v_{nm}" if pre else f"v_{nm}"
                         self.locals.add(env[nm])
                     self.emit(f"{env[nm]} = {v}", ind)
+                    if env[nm].startswith("H_"):
+                        self.written.add(env[nm])
             elif k == "expr":
                 self.ex(s[1], env, ind)
             elif k == "return":

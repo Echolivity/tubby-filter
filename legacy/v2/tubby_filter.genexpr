@@ -1,0 +1,216 @@
+// =====================================================================
+//  Tubby Filter v2 — gen~ codebox (in1/in2 -> out1/out2)
+//  Stepped dub high-pass with console drive, inspired by the switched
+//  high-pass on King Tubby's desk. Character model, not a circuit clone.
+//
+//  Signal flow per channel:
+//   input -> [stereo mode] -> DRIVE (tanh + bias, calibrated, DC block)
+//         -> HP 2-pole TPT SVF (+ optional 1-pole => 18 dB/oct)
+//         -> FLAT/IN crossfade -> dry/wet MIX -> OUTPUT gain
+//         -> + switch transient -> safety soft-knee -> NaN guard
+//
+//  All time constants are in ms or Hz, so behaviour is the same at
+//  any sample rate. All recursive states pass fixdenorm()/fixnan().
+// =====================================================================
+
+// ---- v1 parameters (same names and ranges, kept for compatibility)
+Param knob(0, min=0, max=11);      // left/linked step: 0 = FLAT, 1..11
+Param reso(1.4, min=0.5, max=8);   // Q
+Param drive(20, min=0, max=100);   // % drive (0..+18 dB into the shaper)
+Param glide(0, min=0, max=2000);   // ms; 0 = hard switched
+Param click(30, min=0, max=100);   // % switch transient
+Param slope(1, min=0, max=1);      // 0 = 12 dB/oct, 1 = 18 dB/oct
+Param blend(100, min=0, max=100);  // % dry/wet
+
+// ---- v2 parameters
+Param knobr(0, min=0, max=11);     // right step (Dual mode only)
+Param stereo(0, min=0, max=2);     // 0 Linked, 1 Dual, 2 Mono
+Param comp(1, min=0, max=1);       // 1 Unity (small-signal) / 0 Peak calibration
+Param drvonly(0, min=0, max=1);    // 1 = filter bypassed, drive only
+Param outdb(0, min=-24, max=12);   // output level, dB
+
+// ---------------------------------------------------------------------
+// one-pole smoother, time constant in ms (sample-rate independent)
+slew(x, ms) {
+    History y(0);
+    c = 1 - exp(-1 / (max(ms, 0.01) * 0.001 * samplerate));
+    n = fixnan(fixdenorm(y + (x - y) * c));
+    y = n;
+    return n;
+}
+
+// TPT (zero-delay feedback) state-variable high-pass, Zavalishin form.
+// Stable for any k > 0 and any g >= 0, so modulation cannot blow it up.
+svf_hp(x, g, k) {
+    History ic1(0), ic2(0);
+    a1 = 1 / (1 + g * (g + k));
+    a2 = g * a1;
+    a3 = g * a2;
+    v3 = x - ic2;
+    v1 = a1 * ic1 + a2 * v3;
+    v2 = ic2 + a2 * ic1 + a3 * v3;
+    ic1 = fixnan(fixdenorm(2 * v1 - ic1));
+    ic2 = fixnan(fixdenorm(2 * v2 - ic2));
+    return x - k * v1 - v2;
+}
+
+// TPT one-pole high-pass (the extra 6 dB/oct for the 18 dB slope)
+op_hp(x, g) {
+    History s(0);
+    G = g / (1 + g);
+    v = (x - s) * G;
+    lp = v + s;
+    s = fixnan(fixdenorm(lp + v));
+    return x - lp;
+}
+
+// one-pole low-pass with cutoff in Hz (used to colour the click noise)
+op_lp(x, hz) {
+    History s(0);
+    c = 1 - exp(-twopi * hz / samplerate);
+    n = fixdenorm(s + (x - s) * c);
+    s = n;
+    return n;
+}
+
+// 5 Hz DC blocker (the asymmetric drive creates a little DC)
+dcblock(x) {
+    History xp(0), yp(0);
+    r = exp(-twopi * 5 / samplerate);
+    y = fixnan(fixdenorm(x - xp + r * yp));
+    xp = x;
+    yp = y;
+    return y;
+}
+
+// step index -> cutoff Hz (index 0 = FLAT, parked at 20 Hz)
+stepfreq(i) {
+    return selector(i + 1, 20, 70, 100, 150, 250, 500, 1000, 2000, 3000, 5000, 7500, 10000);
+}
+
+// switch transient: three decaying bursts (contact bounce), times in s
+bounce(t) {
+    tau = 0.0007;
+    e1 = exp(-t / tau);
+    e2 = t >= 0.0011 ? 0.45 * exp(-(t - 0.0011) / tau) : 0;
+    e3 = t >= 0.0026 ? 0.20 * exp(-(t - 0.0026) / tau) : 0;
+    return t < 0.02 ? e1 + e2 + e3 : 0;
+}
+
+// asymmetric console drive.
+//   s(x)  = tanh(G*x + b) - tanh(b)            zero in -> zero out
+//   s'(0) = G * (1 - tanh(b)^2)                 small-signal gain
+//   span  = (tanh(G + b) - tanh(b - G)) / 2     mean full-scale output
+//   Comp on  ("Unity"): y = s(x) / s'(0)  -> small-signal gain exactly 1
+//   Comp off ("Peak") : y = s(x) / span   -> a 0 dBFS input stays near
+//                       0 dBFS; quiet material comes up (pushed desk)
+drive_stage(x, G, b, cmp, amt) {
+    tb = tanh(b);
+    sh = tanh(G * x + b) - tb;
+    s0 = G * (1 - tb * tb);
+    sp = (tanh(G + b) - tanh(b - G)) * 0.5;
+    y = cmp > 0.5 ? sh / s0 : sh / sp;
+    return mix(x, dcblock(y), amt);
+}
+
+// ---------------------------------------------------------------------
+History lfL(2.9957), lfR(2.9957);  // smoothed log(Hz) per channel (log 20)
+History wL(0), wR(0);              // filter-in weight per channel
+History pL(0), pR(0);              // previous step per channel
+History tL(1), tR(1);              // seconds since last switch per channel
+History age(0);                    // seconds since device load
+
+sr = samplerate;
+nage = min(age + 1 / sr, 1);
+age = nage;
+
+// ---- smoothed continuous controls (20 ms)
+q   = max(slew(reso, 20), 0.5);
+d   = clamp(slew(drive, 20), 0, 100) * 0.01;
+sl  = clamp(slew(slope, 10), 0, 1);
+bl  = clamp(slew(blend, 20), 0, 100) * 0.01;
+og  = slew(dbtoa(outdb), 20);
+cp  = comp;
+mode = floor(stereo + 0.5);
+
+// ---- input routing
+mono = (in1 + in2) * 0.5;
+xL = mode == 2 ? mono : in1;
+xR = mode == 2 ? mono : in2;
+
+// ---- drive: 0..+18 dB pre-gain, bias grows with drive (even harmonics)
+G   = dbtoa(d * 18);
+b   = 0.25 * d;
+amt = clamp(d * 8, 0, 1);          // drive 0 = true clean path
+dL = drive_stage(xL, G, b, cp, amt);
+dR = drive_stage(xR, G, b, cp, amt);
+
+// ---- step selection
+iL = clamp(floor(knob + 0.5), 0, 11);
+iR = mode == 1 ? clamp(floor(knobr + 0.5), 0, 11) : iL;
+
+// frequency slew: hard (0.5 ms floor so every rate sees the same step
+// shape), or glide in ms, done in the log domain so it sounds even
+gms = max(glide, 0.5);
+cg  = 1 - exp(-1 / (gms * 0.001 * sr));
+nlL = lfL + (log(stepfreq(iL)) - lfL) * cg;
+nlR = lfR + (log(stepfreq(iR)) - lfR) * cg;
+lfL = nlL;
+lfR = nlR;
+fcL = clamp(exp(nlL), 10, sr * 0.45);
+fcR = clamp(exp(nlR), 10, sr * 0.45);
+
+// FLAT <-> filter crossfade, follows glide but never faster than 4 ms
+byp = drvonly > 0.5;
+cw  = 1 - exp(-1 / (max(4, glide) * 0.001 * sr));
+nwL = wL + (((iL > 0) * (1 - byp)) - wL) * cw;
+nwR = wR + (((iR > 0) * (1 - byp)) - wR) * cw;
+wL = nwL;
+wR = nwR;
+
+// ---- filters
+k  = 1 / q;
+gL = tan(pi * fcL / sr);
+gR = tan(pi * fcR / sr);
+hL = svf_hp(dL, gL, k);
+hR = svf_hp(dR, gR, k);
+fL = mix(hL, op_hp(hL, gL), sl);
+fR = mix(hR, op_hp(hR, gR), sl);
+
+yL = mix(dL, fL, nwL);
+yR = mix(dR, fR, nwR);
+
+// ---- dry/wet and output gain
+oL = mix(xL, yL, bl) * og;
+oR = mix(xR, yR, bl) * og;
+
+// ---- switch transient (only in hard-switch mode, not in drive-only)
+chL = iL != pL;
+chR = iR != pR;
+pL = iL;
+pR = iR;
+ntL = chL ? 0 : min(tL + 1 / sr, 1);
+ntR = chR ? 0 : min(tR + 1 / sr, 1);
+tL = ntL;
+tR = ntR;
+// band-limited noise 500 Hz..5 kHz, level normalised for sample rate
+nz  = noise() * sqrt(sr / 44100);
+nb  = op_lp(nz, 5000);
+nb  = nb - op_lp(nb, 500);
+// (muted for the first 200 ms so restoring a saved step doesn't click)
+cgn = click * 0.01 * 0.5 * (glide < 1) * (1 - byp) * (nage > 0.2);
+oL = oL + nb * bounce(ntL) * cgn * og;
+oR = oR + nb * bounce(ntR) * cgn * og;
+
+// ---- safety: bit-transparent below +6 dBFS, soft knee to a +8 dBFS
+// ceiling (Live runs in float, so normal levels pass untouched; this only
+// catches runaway resonance + drive + Output +12 dB)
+th = 1.9953;
+kn = 0.5166;
+aL = abs(oL);
+aR = abs(oR);
+oL = aL > th ? sign(oL) * (th + kn * tanh((aL - th) / kn)) : oL;
+oR = aR > th ? sign(oR) * (th + kn * tanh((aR - th) / kn)) : oR;
+
+out1 = fixnan(oL);
+out2 = fixnan(oR);
