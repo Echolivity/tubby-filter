@@ -1,3 +1,5 @@
+> **Superseded for 2.2:** this is the V2.1 document, kept for reference. For 2.2.0-rc1 use `validation/ABLETON_LIVE_12_QA.md` and `validation/V22_RELEASE_READINESS.md`.
+
 # Ableton Live validation — Tubby Filter 2.1.0
 
 **Status: NOT PERFORMED.** No test in this document has been run. The development environment has no Max or Ableton Live. Every result field below is blank on purpose and must be filled in by someone running the real device. Until then, V2.1 is **not certified for release** (see `docs/RELEASE_CHECKLIST.md`).

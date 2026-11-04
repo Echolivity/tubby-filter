@@ -1,0 +1,741 @@
+{
+ "_environment": "[sim] GSX execution of the shipped .genexpr sources (numba), Ubuntu 24.04, Python 3.13; not native gen~, not Ableton Live; no audio was listened to",
+ "regression_v21_vs_v22_motion0": {
+  "44100 | static cutoff (1 kHz, Q 1.4, pink)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "44100 | cutoff sweeps (random steps, glide 300)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "44100 | resonance sweep 0.5->8": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "44100 | impulse (500 Hz, Q 4)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "44100 | step response (100 Hz, Q 8)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "44100 | transients (dub loop, hard steps, click 80)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "44100 | gain (drive 90 Peak, out -7, mix 63)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "48000 | static cutoff (1 kHz, Q 1.4, pink)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "48000 | cutoff sweeps (random steps, glide 300)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "48000 | resonance sweep 0.5->8": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "48000 | impulse (500 Hz, Q 4)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "48000 | step response (100 Hz, Q 8)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "48000 | transients (dub loop, hard steps, click 80)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "48000 | gain (drive 90 Peak, out -7, mix 63)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "88200 | static cutoff (1 kHz, Q 1.4, pink)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "88200 | cutoff sweeps (random steps, glide 300)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "88200 | resonance sweep 0.5->8": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "88200 | impulse (500 Hz, Q 4)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "88200 | step response (100 Hz, Q 8)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "88200 | transients (dub loop, hard steps, click 80)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "88200 | gain (drive 90 Peak, out -7, mix 63)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "96000 | static cutoff (1 kHz, Q 1.4, pink)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "96000 | cutoff sweeps (random steps, glide 300)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "96000 | resonance sweep 0.5->8": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "96000 | impulse (500 Hz, Q 4)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "96000 | step response (100 Hz, Q 8)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "96000 | transients (dub loop, hard steps, click 80)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "96000 | gain (drive 90 Peak, out -7, mix 63)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "192000 | static cutoff (1 kHz, Q 1.4, pink)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "192000 | cutoff sweeps (random steps, glide 300)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "192000 | resonance sweep 0.5->8": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "192000 | impulse (500 Hz, Q 4)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "192000 | step response (100 Hz, Q 8)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "192000 | transients (dub loop, hard steps, click 80)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  },
+  "192000 | gain (drive 90 Peak, out -7, mix 63)": {
+   "bit_identical": true,
+   "rms_error": 0.0,
+   "peak_error": 0.0,
+   "residual_dbfs": -300.0,
+   "max_spectral_difference": 0.0
+  }
+ },
+ "regression_summary": {
+  "cases": 35,
+  "bit_identical": 35,
+  "max_peak_error": 0.0
+ },
+ "frequency_response": {
+  "44100": {
+   "worst_dev_vs_analog_db": 1.01,
+   "static_response_identical_to_v21_at_motion100": true
+  },
+  "48000": {
+   "worst_dev_vs_analog_db": 0.848,
+   "static_response_identical_to_v21_at_motion100": true
+  },
+  "88200": {
+   "worst_dev_vs_analog_db": 1.01,
+   "static_response_identical_to_v21_at_motion100": true
+  },
+  "96000": {
+   "worst_dev_vs_analog_db": 0.848,
+   "static_response_identical_to_v21_at_motion100": true
+  },
+  "192000": {
+   "worst_dev_vs_analog_db": 0.208,
+   "static_response_identical_to_v21_at_motion100": true
+  }
+ },
+ "motion": {
+  "speed": {
+   "glide 2000 ms": {
+    "motion 25": 0.08,
+    "motion 50": 0.17,
+    "motion 100": 0.34
+   },
+   "glide 1000 ms": {
+    "motion 25": 0.32,
+    "motion 50": 0.64,
+    "motion 100": 1.25
+   },
+   "glide 300 ms": {
+    "motion 25": 1.34,
+    "motion 50": 2.47,
+    "motion 100": 4.23
+   },
+   "glide 100 ms": {
+    "motion 25": 2.17,
+    "motion 50": 4.0,
+    "motion 100": 6.46
+   },
+   "glide 50 ms": {
+    "motion 25": 2.09,
+    "motion 50": 3.65,
+    "motion 100": 5.75
+   },
+   "glide 20 ms": {
+    "motion 25": 2.16,
+    "motion 50": 4.0,
+    "motion 100": 6.4
+   }
+  },
+  "direction": {
+   "up 150->5k": 4.23,
+   "down 5k->150": 4.91
+  },
+  "near_min": {
+   "FLAT->70": 2.24,
+   "70->100": 2.72
+  },
+  "near_max": {
+   "7.5k->10k": 14.49
+  },
+  "hard_step_pink_-18dBFS": {
+   "research candidate (pre-fix) | Reso 1.4": {
+    "peak_gain_db": 3.68,
+    "rms20ms_max_gain_db": 5.74,
+    "bloom_residual_db_re_output": {
+     "0.0": 0.5,
+     "0.1": -2.6,
+     "0.2": -0.7,
+     "0.3": -1.7,
+     "0.4": -2.5,
+     "0.6": -6.8,
+     "1.0": -28.3,
+     "1.5": -65.0
+    }
+   },
+   "research candidate (pre-fix) | Reso 4": {
+    "peak_gain_db": 4.5,
+    "rms20ms_max_gain_db": 7.33,
+    "bloom_residual_db_re_output": {
+     "0.0": 1.6,
+     "0.1": -0.8,
+     "0.2": 2.6,
+     "0.3": -0.7,
+     "0.4": -2.0,
+     "0.6": -4.0,
+     "1.0": -27.6,
+     "1.5": -63.3
+    }
+   },
+   "research candidate (pre-fix) | Reso 8": {
+    "peak_gain_db": 4.05,
+    "rms20ms_max_gain_db": 7.66,
+    "bloom_residual_db_re_output": {
+     "0.0": -0.2,
+     "0.1": 0.4,
+     "0.2": 2.7,
+     "0.3": -0.3,
+     "0.4": -1.3,
+     "0.6": -2.6,
+     "1.0": -27.4,
+     "1.5": -63.0
+    }
+   },
+   "2.2.0-rc1 | Reso 1.4": {
+    "peak_gain_db": 1.81,
+    "rms20ms_max_gain_db": 3.72,
+    "bloom_residual_db_re_output": {
+     "0.0": -3.2,
+     "0.1": -10.7,
+     "0.2": -15.4,
+     "0.3": -21.5,
+     "0.4": -28.5,
+     "0.6": -43.6,
+     "1.0": -71.5,
+     "1.5": -108.7
+    }
+   },
+   "2.2.0-rc1 | Reso 4": {
+    "peak_gain_db": 2.76,
+    "rms20ms_max_gain_db": 5.29,
+    "bloom_residual_db_re_output": {
+     "0.0": -1.4,
+     "0.1": -9.1,
+     "0.2": -12.5,
+     "0.3": -21.2,
+     "0.4": -27.8,
+     "0.6": -41.5,
+     "1.0": -70.8,
+     "1.5": -107.0
+    }
+   },
+   "2.2.0-rc1 | Reso 8": {
+    "peak_gain_db": 3.13,
+    "rms20ms_max_gain_db": 4.63,
+    "bloom_residual_db_re_output": {
+     "0.0": -2.6,
+     "0.1": -8.2,
+     "0.2": -10.8,
+     "0.3": -20.5,
+     "0.4": -27.7,
+     "0.6": -40.1,
+     "1.0": -70.7,
+     "1.5": -106.7
+    }
+   }
+  },
+  "repeated_steps_every_150ms": {
+   "rms_gain_db": 1.69,
+   "peak_gain_db": 1.61,
+   "level_last_vs_second_second_db": 0.13
+  }
+ },
+ "stability": {
+  "44100": {
+   "per_sample_random_all_controls": {
+    "finite": true,
+    "peak_dbfs": 6.55
+   },
+   "nan_inf_huge_input": {
+    "finite": true,
+    "peak_dbfs": 8.0
+   }
+  },
+  "48000": {
+   "per_sample_random_all_controls": {
+    "finite": true,
+    "peak_dbfs": 5.57
+   },
+   "nan_inf_huge_input": {
+    "finite": true,
+    "peak_dbfs": 8.0
+   }
+  },
+  "96000": {
+   "per_sample_random_all_controls": {
+    "finite": true,
+    "peak_dbfs": 6.7
+   },
+   "nan_inf_huge_input": {
+    "finite": true,
+    "peak_dbfs": 8.0
+   }
+  },
+  "192000": {
+   "per_sample_random_all_controls": {
+    "finite": true,
+    "peak_dbfs": 7.54
+   },
+   "nan_inf_huge_input": {
+    "finite": true,
+    "peak_dbfs": 8.0
+   }
+  }
+ },
+ "latency_phase": {
+  "44100": {
+   "impulse_peak_sample": 4,
+   "group_delay_samples": {
+    "20": 3.067,
+    "100": 3.067,
+    "1000": 3.076,
+    "5000": 3.288,
+    "10000": 4.109,
+    "15000": 6.395,
+    "18000": 10.208
+   },
+   "null_vs_dry_delayed_0": {
+    "100": -27.2,
+    "1000": -7.3,
+    "3000": 1.8,
+    "5000": 5.1,
+    "10000": 2.5,
+    "15000": 4.9
+   },
+   "null_vs_dry_delayed_1": {
+    "100": -30.7,
+    "1000": -10.6,
+    "3000": -1.3,
+    "5000": 2.8,
+    "10000": 5.9,
+    "15000": -53.2
+   },
+   "null_vs_dry_delayed_2": {
+    "100": -36.4,
+    "1000": -16.3,
+    "3000": -6.7,
+    "5000": -2.1,
+    "10000": 4.4,
+    "15000": 4.9
+   },
+   "null_vs_dry_delayed_3": {
+    "100": -60.4,
+    "1000": -40.0,
+    "3000": -28.0,
+    "5000": -20.1,
+    "10000": -5.3,
+    "15000": 4.5
+   },
+   "null_vs_dry_delayed_4": {
+    "100": -37.6,
+    "1000": -17.6,
+    "3000": -8.3,
+    "5000": -4.4,
+    "10000": -1.4,
+    "15000": -17.7
+   }
+  },
+  "48000": {
+   "impulse_peak_sample": 4,
+   "group_delay_samples": {
+    "20": 3.067,
+    "100": 3.067,
+    "1000": 3.074,
+    "5000": 3.252,
+    "10000": 3.916,
+    "15000": 5.581,
+    "18000": 7.889
+   },
+   "null_vs_dry_delayed_0": {
+    "100": -28.0,
+    "1000": -8.0,
+    "3000": 1.1,
+    "5000": 4.6,
+    "10000": 4.3,
+    "15000": 0.4
+   },
+   "null_vs_dry_delayed_1": {
+    "100": -31.4,
+    "1000": -11.4,
+    "3000": -2.0,
+    "5000": 2.2,
+    "10000": 6.0,
+    "15000": -1.5
+   },
+   "null_vs_dry_delayed_2": {
+    "100": -37.1,
+    "1000": -17.1,
+    "3000": -7.4,
+    "5000": -2.8,
+    "10000": 3.7,
+    "15000": 5.9
+   },
+   "null_vs_dry_delayed_3": {
+    "100": -61.1,
+    "1000": -40.8,
+    "3000": -29.2,
+    "5000": -21.5,
+    "10000": -7.4,
+    "15000": 2.7
+   },
+   "null_vs_dry_delayed_4": {
+    "100": -38.3,
+    "1000": -18.3,
+    "3000": -9.0,
+    "5000": -5.0,
+    "10000": -1.4,
+    "15000": -6.6
+   }
+  },
+  "88200": {
+   "impulse_peak_sample": 0,
+   "group_delay_samples": {
+    "20": -0.0,
+    "100": -0.0,
+    "1000": -0.0,
+    "5000": -0.0,
+    "10000": -0.0,
+    "15000": -0.0,
+    "18000": -0.0
+   },
+   "null_vs_dry_delayed_0": {
+    "100": -300.0,
+    "1000": -300.0,
+    "3000": -300.0,
+    "5000": -300.0,
+    "10000": -300.0,
+    "15000": -300.0
+   },
+   "null_vs_dry_delayed_1": {
+    "100": -43.0,
+    "1000": -22.9,
+    "3000": -13.4,
+    "5000": -9.0,
+    "10000": -3.1,
+    "15000": 0.2
+   },
+   "null_vs_dry_delayed_2": {
+    "100": -37.0,
+    "1000": -16.9,
+    "3000": -7.4,
+    "5000": -3.1,
+    "10000": 2.3,
+    "15000": 4.9
+   },
+   "null_vs_dry_delayed_3": {
+    "100": -33.4,
+    "1000": -13.4,
+    "3000": -4.0,
+    "5000": 0.2,
+    "10000": 4.9,
+    "15000": 6.0
+   },
+   "null_vs_dry_delayed_4": {
+    "100": -30.9,
+    "1000": -10.9,
+    "3000": -1.6,
+    "5000": 2.3,
+    "10000": 5.9,
+    "15000": 4.5
+   }
+  },
+  "96000": {
+   "impulse_peak_sample": 0,
+   "group_delay_samples": {
+    "20": -0.0,
+    "100": -0.0,
+    "1000": -0.0,
+    "5000": -0.0,
+    "10000": -0.0,
+    "15000": -0.0,
+    "18000": -0.0
+   },
+   "null_vs_dry_delayed_0": {
+    "100": -300.0,
+    "1000": -300.0,
+    "3000": -300.0,
+    "5000": -300.0,
+    "10000": -300.0,
+    "15000": -300.0
+   },
+   "null_vs_dry_delayed_1": {
+    "100": -43.7,
+    "1000": -23.7,
+    "3000": -14.2,
+    "5000": -9.7,
+    "10000": -3.8,
+    "15000": -0.5
+   },
+   "null_vs_dry_delayed_2": {
+    "100": -37.7,
+    "1000": -17.7,
+    "3000": -8.2,
+    "5000": -3.8,
+    "10000": 1.7,
+    "15000": 4.4
+   },
+   "null_vs_dry_delayed_3": {
+    "100": -34.2,
+    "1000": -14.2,
+    "3000": -4.7,
+    "5000": -0.5,
+    "10000": 4.4,
+    "15000": 6.0
+   },
+   "null_vs_dry_delayed_4": {
+    "100": -31.7,
+    "1000": -11.7,
+    "3000": -2.3,
+    "5000": 1.7,
+    "10000": 5.7,
+    "15000": 5.3
+   }
+  },
+  "192000": {
+   "impulse_peak_sample": 0,
+   "group_delay_samples": {
+    "20": -0.0,
+    "100": -0.0,
+    "1000": -0.0,
+    "5000": -0.0,
+    "10000": -0.0,
+    "15000": -0.0,
+    "18000": -0.0
+   },
+   "null_vs_dry_delayed_0": {
+    "100": -300.0,
+    "1000": -300.0,
+    "3000": -300.0,
+    "5000": -300.0,
+    "10000": -300.0,
+    "15000": -300.0
+   },
+   "null_vs_dry_delayed_1": {
+    "100": -49.7,
+    "1000": -29.7,
+    "3000": -20.2,
+    "5000": -15.7,
+    "10000": -9.7,
+    "15000": -6.3
+   },
+   "null_vs_dry_delayed_2": {
+    "100": -43.7,
+    "1000": -23.7,
+    "3000": -14.2,
+    "5000": -9.7,
+    "10000": -3.8,
+    "15000": -0.5
+   },
+   "null_vs_dry_delayed_3": {
+    "100": -40.2,
+    "1000": -20.1,
+    "3000": -10.6,
+    "5000": -6.3,
+    "10000": -0.5,
+    "15000": 2.6
+   },
+   "null_vs_dry_delayed_4": {
+    "100": -37.7,
+    "1000": -17.7,
+    "3000": -8.2,
+    "5000": -3.8,
+    "10000": 1.7,
+    "15000": 4.4
+   }
+  },
+  "note": "IIR half-band group delay is frequency dependent; no integer latency nulls the full band",
+  "best_integer_delay_per_band_44k1": {
+   "20-500 Hz": {
+    "best_integer_delay": 3,
+    "residual_db": -50.9
+   },
+   "500-2000 Hz": {
+    "best_integer_delay": 3,
+    "residual_db": -37.1
+   },
+   "2000-8000 Hz": {
+    "best_integer_delay": 3,
+    "residual_db": -16.9
+   },
+   "8000-18000 Hz": {
+    "best_integer_delay": 4,
+    "residual_db": -2.9
+   }
+  }
+ },
+ "audio": {
+  "null_v22_motion0_minus_v21 peak": 0.0,
+  "motion 50 level-match gain db": -0.23,
+  "motion 100 level-match gain db": -0.42
+ }
+}

@@ -217,7 +217,6 @@ R["stability"] = ST
 
 # ===================================================================== 5. latency and phase
 log("5. latency / phase")
-from halfband import response as hb_response
 c = [0.04063346092419326, 0.1505051290226746, 0.3007570559918741, 0.4607745049614506,
      0.6095243148961883, 0.7385038411188573, 0.8492238103920661, 0.9497427837050002]
 LT = {}
@@ -242,9 +241,7 @@ for sr in RATES:
         for comp, ls in ((0, ":"), (3, "-")):
             dd = np.zeros_like(h); dd[comp] = 1.0
             ax[1].semilogx(f[1:], db(np.fft.rfft(h - dd))[1:], ls, label=f"{sr/1000:g}k, dry delayed {comp}")
-# analytic DC group delay of up+down half-band chain (in host samples)
-w = np.array([1e-6, 2 * np.pi * 1000 / 88200])
-LT["analytic"] = "IIR half-band group delay is frequency dependent; no integer latency nulls the full band"
+LT["note"] = "IIR half-band group delay is frequency dependent; no integer latency nulls the full band"
 ax[0].set(xlim=(20, 24000), ylim=(-1, 12), xlabel="Hz", ylabel="samples", title="V2.2 group delay, FLAT, Drive 0")
 ax[1].set(xlim=(20, 24000), ylim=(-80, 10), xlabel="Hz", ylabel="dB", title="Null test vs dry copy (0 vs 3-sample delay)")
 for a_ in ax: a_.legend(fontsize=6)
@@ -296,6 +293,16 @@ for m in (0, 100):
     wav(f"demo_sweeps_pink_glide300_motion{m:03d}.wav", sr, *V22.run(pk, pk, sr, dict(knob=k, glide=300, reso=1.4, motion=m, click=0)))
     wav(f"demo_hardsteps_loop_reso6_motion{m:03d}.wav", sr,
         *V22.run(loop[:8 * sr], loop[:8 * sr], sr, dict(knob=k, glide=0, reso=6, motion=m, click=30)))
+# KI-01 listening material: hard steps with the Motion attack at 2 (rc1), 5 and 10 ms
+src = open(os.path.join(ROOT, "src", "tubby_filter.genexpr")).read()
+A = "c2   = 1 - exp(-1 / (2 * 0.001 * sr));"
+assert A in src
+xs = loop[:8 * sr]
+for att in (2, 5, 10):
+    P = V22 if att == 2 else compile_genexpr(src.replace(A, f"c2   = 1 - exp(-1 / ({att} * 0.001 * sr));"))
+    wav(f"KI01_hardsteps_click0_motion100_attack{att:02d}ms.wav", sr,
+        *P.run(xs, xs, sr, dict(knob=k, glide=0, reso=4, motion=100, click=0)))
+wav("KI01_hardsteps_click0_motion000.wav", sr, *V22.run(xs, xs, sr, dict(knob=k, glide=0, reso=4, motion=0, click=0)))
 R["audio"] = AUDIO
 json.dump(R, open(os.path.join(OUT, "v22_measurements.json"), "w"), indent=1, default=str)
 log("done")

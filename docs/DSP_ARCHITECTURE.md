@@ -1,6 +1,10 @@
-# Tubby Filter 2.1 — DSP architecture
+# Tubby Filter 2.2.0-rc1 — DSP architecture
 
-The source of truth is `src/tubby_filter.genexpr`, a single gen~ codebox embedded in the device by `src/build_device.py`. Every statement below describes that file. The numbers marked **[sim]** come from `tests/measure_v21.py`, which runs that source through GSX, not through gen~ (see `TEST_METHODOLOGY.md`).
+The source of truth is `src/tubby_filter.genexpr`, a single gen~ codebox embedded in the device by `src/build_device.py`. Every statement below describes that file.
+
+**2.2 = 2.1 + Motion (§11).** With Motion at 0, the output is bit-identical to 2.1 at every tested rate ([sim], `tests/test_v22.py` R01–R11). §1–§10 therefore describe both versions. The 2.1 source is frozen in `legacy/v2.1/`.
+
+The numbers marked **[sim]** come from the shipped source run through GSX, not through gen~ (see `TEST_METHODOLOGY.md`).
 
 ## 1. Signal flow
 
@@ -108,4 +112,23 @@ Peak:   y = s(x) / [(tanh(G+b) − tanh(b−G)) / 2]       full scale in ≈ ful
 3. **Top step accuracy**: the 10 kHz step deviates from the analog prototype by up to 1.0 dB in the skirt at 44.1/88.2 kHz, and 0.85 dB at 48/96 kHz.
 4. **Unity calibration compresses loud material** at high drive (by design). Use Output to make up level.
 5. **Rate-change hand-over**: when the sample rate changes, the restart produces one sample step of up to about 2× normal signal motion. Live interrupts the audio stream at that moment anyway.
-6. **Not yet verified in gen~ or Live.** Whether gen~ compiles this source, and how it behaves in Live, has not been tested (see `validation/LIVE_VALIDATION.md`).
+6. **Not yet verified in gen~ or Live.** Whether gen~ compiles this source, and how it behaves in Live, has not been tested (see `validation/ABLETON_LIVE_12_QA.md`).
+7. **Motion (2.2):** see `validation/V22_KNOWN_ISSUES.md`, KI-01 (a faint transient on hard steps) and KI-04 (a tone sitting on a fast-moving resonance gets louder).
+
+## 11. Motion (new in 2.2)
+
+```
+per host sample, per channel:
+  v   = (log-cutoff now − log-cutoff previous sample) · sr / ln 2      cutoff speed, oct/s (0 on reset)
+        right channel uses the left speed while a Link↔Dual crossfade runs (not a gesture)
+  m   = |v| / (|v| + 8)                                                0..1; 8 oct/s = 0.5
+  env = one-pole towards m: 2 ms when rising, 120 ms when falling
+  amt = Motion% / 100, smoothed 20 ms
+  k   = (1 / Q) / (1 + 4 · amt · env)                                  damping; Q × up to 5
+```
+
+- **The cutoff path is untouched.** `g = tan(π·fc/fs)` comes from the same glide state as in 2.1. Motion only scales the damping `k`. Tested by exposing the internal log-cutoff trajectory: it is bit-identical at Motion 0 and 100 (`test_M12`).
+- **At a stationary cutoff, v = 0 exactly,** so env stays 0, the factor is exactly 1.0, and the output is bit-identical to Motion 0 (`test_M11`, Live capture case C13).
+- **Order fixed in rc1.** The speed is mapped to 0..1 *before* the envelope. The research candidate enveloped raw speed. A hard step moves at about 2000 oct/s through the 0.5 ms glide floor, so the candidate held the bloom at full strength for about 0.6 s, instead of the documented 120 ms release (KI FX-01).
+- **Cost:** about 20 operations and 3 `exp` calls per host sample (the two envelope coefficients and the amount smoother).
+- **Measured behaviour [sim]:** see `validation/V22_MOTION_VALIDATION.md`. Limitations: KI-01 and KI-04.

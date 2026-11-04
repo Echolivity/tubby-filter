@@ -396,8 +396,19 @@ def test_capture_tool_passes_reference_and_catches_faults(tmp_path):
     g = json.load(open(good / "capture_report.json"))["cases"]
     b = json.load(open(bad / "capture_report.json"))["cases"]
     assert all(v["status"] == "PASS" for v in g.values())
-    gain_sensitive = [k for k in b if k not in ("C10_leftonly_link_sep", "C12_silence_noise_floor")]
+    # C10/C12 are level-independent by nature; C14 compares a bloom RATIO (Motion vs Motion 0),
+    # which is gain-invariant by design. Every other case must catch a 0.2 dB gain error.
+    gain_sensitive = [k for k in b if k not in ("C10_leftonly_link_sep", "C12_silence_noise_floor",
+                                                "C14_motion100_step_bloom")]
     assert all(b[k]["status"] == "FAIL" for k in gain_sensitive)
+    # C14 must catch a device whose Motion does nothing (render equals the Motion-0 reference)
+    c14 = "C14_motion100_step_bloom"
+    if c14 in g:
+        bad2 = tmp_path / "nomotion"; bad2.mkdir()
+        sr, r0 = wavfile.read(os.path.join(sd, f"{c14}_ref_motion0.wav"))
+        wavfile.write(bad2 / f"{c14}_live.wav", sr, r0)
+        compare_capture.main(48000, str(bad2))
+        assert json.load(open(bad2 / "capture_report.json"))["cases"][c14]["status"] == "FAIL"
 
 
 # ================================================================ V2.2 research additions (part 7)

@@ -1,5 +1,38 @@
 # Changelog
 
+## 2.2.0-rc1 — Motion; release-candidate validation
+
+**Labels:**
+- **[sim]**: the shipped source executed by GSX on Linux.
+- **BLOCKED**: native gen~ and Ableton Live.
+
+### Added
+- **Motion** (0–100 %, default 0): resonance that responds to how fast the cutoff moves (DSP_ARCHITECTURE §11). At 0 it is bit-identical to 2.1 at 44.1, 48, 88.2, 96 and 192 kHz [sim].
+
+### Fixed (relative to the V2.2 research candidate)
+- **FX-01:** the Motion bloom release is now independent of step speed. Speed is mapped to 0..1 before the 2/120 ms envelope. A hard-step bloom now falls about 20 dB within 0.3–0.4 s; the candidate held it for about 0.6 s. Added high-frequency content on hard steps improved from −29.9 to −53.5 dBFS [sim].
+- **FX-02:** renamed `f` → `hpf` and `i` → `idx`. Both are gen operators, found by the new static audit `tools/gen_compat.py`. Output is bit-identical.
+- **FX-03:** the Glide and Click Info View texts described the V2 Click/Glide rule; corrected. They are kept verbatim in the `--v21` build.
+- **FX-04:** the release build now uses gen~ title `tubby_v2_2` and version 2.2.0-rc1 consistently in the source header, device description, panel and manifest.
+
+### Changed (no effect on sound)
+- `src/build_device.py`: the default build is 2.2.0-rc1. `--v21` rebuilds the frozen V2.1 device byte-for-byte; `--candidate` builds research devices.
+- `.gitattributes` forces LF line endings, so the embedded source, and with it the device hash, reproduces on Windows.
+
+### Validation
+- `tests/test_v22.py`: regression (R), Motion (M), stability (S), latency (L), parameters/presets (P), gen~ audit (G) and build (B) tests.
+- The V2.1 behaviour suite runs unchanged against V2.2, and with `TUBBY_TARGET=v2.1` against the frozen V2.1.
+- Live capture kit: Motion cases C13 (static cutoff, sample-exact) and C14 (bloom, statistical).
+- Also new: `validation/null_test.py` and `validation/ABLETON_LIVE_12_QA.md`.
+
+### Not changed, deliberately
+- **No latency declaration** (KI-03). The PDC behaviour has to be verified in Live first.
+- **No retuning of the Motion attack** (KI-01). It's a listening decision; comparison renders are provided.
+
+### Known issues
+See `validation/V22_KNOWN_ISSUES.md`.
+
+
 ## 2.1.0 — DSP stabilisation and validation release
 
 The sound and workflow are unchanged. No controls were added or removed, and no parameter changed meaning. Each entry gives its evidence; **[sim]** means the shipped source was executed by GSX (see TEST_METHODOLOGY.md). Nothing here has been verified in gen~ or Live yet.

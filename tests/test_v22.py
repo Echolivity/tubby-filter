@@ -273,13 +273,56 @@ def test_M12_cutoff_trajectory_preserved(v22):
         assert np.all(km0 == 1.0) and km1.min() < 0.5 and km1.max() == 1.0
 
 
-def test_M13_motion_adds_no_switching_artefact(v22):
-    sr = SR; t = np.arange(sr) / sr
+def _added_hf(y_motion, y_ref, sr, i0, ms=30):
+    """Peak (dBFS) of what Motion ADDS above 3 kHz (10th-order high-pass of the difference).
+    A 4th-order 3 kHz high-pass of the output is not usable here: the intended bloom at a
+    1 kHz cutoff leaks through it (measured: difference energy 500-2000 Hz +4.7 dB, >3 kHz -86 dB)."""
+    sos = signal.butter(10, 3000, "hp", fs=sr, output="sos")
+    h = signal.sosfilt(sos, y_motion - y_ref)
+    return float(db(np.abs(h[i0:i0 + int(ms * 1e-3 * sr)]).max()))
+
+
+@pytest.mark.xfail(strict=True, reason="KNOWN ISSUE KI-01: with the documented 2 ms attack, Motion 100 adds "
+                   "~-54 dBFS above 3 kHz on a hard step (-12 dBFS input). Meeting -70 dBFS needs a 20 ms attack, "
+                   "which removes most of the hard-step bloom. Listening decision required (validation/"
+                   "V22_KNOWN_ISSUES.md); the criterion is deliberately NOT relaxed.")
+@pytest.mark.parametrize("sr", [44100, 96000])
+def test_M13_motion_adds_no_switching_artefact(v22, sr):
+    """Hard step 150 Hz -> 1 kHz on a 100 Hz sine at -12 dBFS: Motion adds no click (> 3 kHz)."""
+    t = np.arange(sr) / sr
     x = 0.25 * np.sin(2 * np.pi * 100 * t)
     k = np.full(sr, 3.0); k[sr // 2:] = 6
-    a0 = transition_artifact(v22.run(x, x, sr, dict(knob=k, click=0, motion=0))[0], sr, 0.5)[0]
-    a1 = transition_artifact(v22.run(x, x, sr, dict(knob=k, click=0, motion=100))[0], sr, 0.5)[0]
-    assert a1 <= a0 + 3.0, (a0, a1)
+    y0 = v22.run(x, x, sr, dict(knob=k, click=0, motion=0))[0]
+    y1 = v22.run(x, x, sr, dict(knob=k, click=0, motion=100))[0]
+    assert _added_hf(y1, y0, sr, sr // 2) < -70
+
+
+def test_M13b_motion_step_transient_bounded_and_masked_by_default_click(v22):
+    """KI-01 bound: what Motion adds above 3 kHz on a hard step stays >= 38 dB below the signal
+    and >= 15 dB below the device's own default Click (30 %) transient on the same step."""
+    sr = SR; t = np.arange(sr) / sr
+    x = 0.25 * np.sin(2 * np.pi * 100 * t)                            # -12 dBFS
+    k = np.full(sr, 3.0); k[sr // 2:] = 6
+    y0 = v22.run(x, x, sr, dict(knob=k, click=0, motion=0))[0]
+    y1 = v22.run(x, x, sr, dict(knob=k, click=0, motion=100))[0]
+    yc = v22.run(x, x, sr, dict(knob=k, click=30, motion=0))[0]
+    added = _added_hf(y1, y0, sr, sr // 2)
+    click = _added_hf(yc, y0, sr, sr // 2)
+    assert added < -12 - 38 and added < click - 15, (added, click)
+
+
+def test_M15_motion_param_change_is_smooth(v22):
+    """Turning Motion 0 -> 100 instantly while the cutoff glides adds no click (> 3 kHz).
+    (The output does get louder: the bloom on a tone near the moving resonance, measured
+    +9.75 dB after 50 ms; that is documented behaviour, not a discontinuity.)"""
+    n = 2 * SR; t = np.arange(n) / SR
+    x = 0.3 * np.sin(2 * np.pi * 300 * t)
+    k = np.full(n, 3.0); k[SR // 2:] = 9
+    i0 = SR // 2 + 2400
+    mo = np.zeros(n); mo[i0:] = 100
+    y1, _ = v22.run(x, x, SR, dict(knob=k, glide=500, motion=mo, click=0, reso=2))
+    y0, _ = v22.run(x, x, SR, dict(knob=k, glide=500, motion=0, click=0, reso=2))
+    assert _added_hf(y1, y0, SR, i0) < -70
 
 
 SWITCHES = {"stereo Link->Dual": ("stereo", 0, 1, dict(knob=6, knobr=1)),
@@ -301,17 +344,6 @@ def test_M14_discrete_switches_click_free_with_motion(v22, sr, name):
     arr = np.full(sr, float(a)); arr[sr // 2:] = b; v[p] = arr
     y1, y2 = v22.run(x, xr, sr, v)
     assert max(transition_artifact(y1, sr, 0.5)[0], transition_artifact(y2, sr, 0.5)[0]) < -70
-
-
-def test_M15_motion_param_change_is_smooth(v22):
-    """Turning Motion 0 -> 100 instantly while the cutoff glides causes no step in the output."""
-    n = 2 * SR; t = np.arange(n) / SR
-    x = 0.3 * np.sin(2 * np.pi * 300 * t)
-    k = np.full(n, 3.0); k[SR // 2:] = 9
-    mo = np.zeros(n); mo[SR // 2 + 2400:] = 100
-    y, _ = v22.run(x, x, SR, dict(knob=k, glide=500, motion=mo, click=0, reso=2))
-    d = np.abs(np.diff(y))
-    assert d[SR // 2 + 2390:SR // 2 + 4800].max() < 1.5 * d[SR // 2 + 1000:SR // 2 + 2390].max()
 
 
 # ======================================================================== S: stability / extremes
@@ -498,7 +530,8 @@ def test_G02_v21_static_issues_documented():
 
 
 def test_B01_v21_device_reproducible_and_untouched():
-    pins = dict(l.split()[::-1] for l in open(os.path.join(ROOT, "legacy", "v2.1", "SHA256")))
+    pins = {l.split(maxsplit=1)[1].strip(): l.split(maxsplit=1)[0]
+            for l in open(os.path.join(ROOT, "legacy", "v2.1", "SHA256")) if l.strip()}
     import hashlib
     for rel, h in pins.items():
         assert hashlib.sha256(open(os.path.join(ROOT, "legacy", "v2.1", rel), "rb").read()).hexdigest() == h, rel
@@ -516,3 +549,32 @@ def test_B02_version_strings_consistent():
     assert "v2.2.0-rc1" in src and man["version"] == "2.2.0-rc1" and "2.2.0-rc1" in patch["description"]
     texts = [b["box"].get("text", "") for b in patch["boxes"]]
     assert "gen~ @title tubby_v2_2" in texts and any("v2.2" in t for t in texts)
+
+
+# ======================================================================== T: validation tools
+def test_T01_null_tool_reports_known_residuals(tmp_path, capsys):
+    """validation/null_test.py reads synthetic nulls of known depth correctly: a copy scaled
+    by 0.01 must read -40 dB (+/-0.5) in every band; a perfect null must read below -200 dB."""
+    from scipy.io import wavfile
+    sys.path.insert(0, os.path.join(ROOT, "validation"))
+    import null_test
+    sr = 44100; x = pink(sr, 3.0, -12)
+    wavfile.write(tmp_path / "ref.wav", sr, x.astype(np.float32))
+    wavfile.write(tmp_path / "m40.wav", sr, (0.01 * x).astype(np.float32))
+    wavfile.write(tmp_path / "perfect.wav", sr, np.zeros_like(x, dtype=np.float32))
+    null_test.main(str(tmp_path / "m40.wav"), str(tmp_path / "ref.wav"))
+    lines = capsys.readouterr().out.splitlines()
+    vals = [float(l.split(":")[1].split()[0]) for l in lines]
+    assert all(abs(v + 40) < 0.5 for v in vals), vals
+    null_test.main(str(tmp_path / "perfect.wav"), str(tmp_path / "ref.wav"))
+    assert float(capsys.readouterr().out.splitlines()[0].split(":")[1].split()[0]) < -200
+
+
+def test_T02_capture_case_C13_reference_equals_motion_zero(v22):
+    sys.path.insert(0, os.path.join(ROOT, "validation"))
+    from cases import CASES, SIGNALS, gen_params
+    c = CASES["C13_motion100_static_cutoff"]
+    a, b = SIGNALS[c["signal"]](48000)
+    p, _ = gen_params(c["ui"])
+    assert p["motion"] == 100
+    assert _identical(v22.run(a, b, 48000, p), v22.run(a, b, 48000, dict(p, motion=0)))

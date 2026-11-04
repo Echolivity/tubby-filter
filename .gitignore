@@ -2,3 +2,4 @@ __pycache__/
 *.pyc
 build/
 validation/signals/
+reports/v22/audio/

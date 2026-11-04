@@ -1,3 +1,5 @@
+> **Superseded for 2.2:** this is the V2.1 document, kept for reference. For 2.2.0-rc1 use `validation/ABLETON_LIVE_12_QA.md` and `validation/V22_RELEASE_READINESS.md`.
+
 # Release checklist — Tubby Filter 2.1.0
 
 The legend is **PASSED** / **FAILED** / **NOT PERFORMED** / **MANUAL (Live)**. "Passed" here always means passed at the stated level: [sim] = the shipped source run by GSX.

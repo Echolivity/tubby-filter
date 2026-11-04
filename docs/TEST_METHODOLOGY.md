@@ -1,5 +1,14 @@
 # Test methodology
 
+> **2.2.0-rc1 additions:**
+> - A static gen~ compatibility audit, `tools/gen_compat.py`. It is code inspection against the official operator lists, not compilation.
+> - `tests/test_v22.py`, with test IDs R, M, S, L, P, T, G and B.
+> - `tests/model_v22.py`, which is bit-exact with the V2.2 source.
+> - `TUBBY_TARGET=v2.1`, which runs the regression suite on the frozen baseline.
+> - Results are generated from JUnit (`validation/junit_report.py`).
+>
+> The three levels below are unchanged. Level 3 (Live) is still not performed.
+
 V2.1 is checked at three levels. Each level can only vouch for what it actually executes, and every result in this project carries a label saying which level produced it.
 
 | Level | What runs | Label | Proves | Cannot prove |
