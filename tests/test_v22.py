@@ -29,7 +29,7 @@ def v22():
 
 @pytest.fixture(scope="module")
 def v21():
-    return compile_genexpr(open(V21SRC).read())
+    return compile_genexpr(open(V21SRC).read(), check_order=False)   # frozen reference; not gen~-compilable
 
 
 def pink(sr, dur, lvl_db=-18, seed=1):
@@ -522,11 +522,24 @@ def test_G01_static_gen_compat_audit_clean():
     assert out.returncode == 0, out.stdout
 
 
+def test_G01b_function_definitions_precede_all_statements():
+    """gen~ compile rule found in Live 12 (rc1 failed): both checkers must reject a Param before a function."""
+    from gsx import compile_genexpr as cg
+    bad = "Param p(0);\nfoo(x) {\n    return x;\n}\nout1 = foo(in1);\nout2 = in2;\n"
+    with pytest.raises(SyntaxError):
+        cg(bad)
+    out = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "gen_compat.py"), "/dev/stdin"],
+                         input=bad, capture_output=True, text=True)
+    assert out.returncode == 1 and "must precede all statements" in out.stdout
+
+
 def test_G02_v21_static_issues_documented():
-    """V2.1 (frozen) has the 'f'/'i' name collisions fixed in V2.2: recorded, not changed."""
+    """V2.1 (frozen) fails gen~ (functions after Param: the error seen in Live 12) and has the
+    'f'/'i' name collisions. Both are fixed in V2.2 rc2; V2.1 is recorded, not changed."""
     out = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "gen_compat.py"), V21SRC],
                          capture_output=True, text=True)
     assert out.returncode == 1 and "'f'" in out.stdout and "'i'" in out.stdout
+    assert "must precede all statements" in out.stdout
 
 
 def test_B01_v21_device_reproducible_and_untouched():
@@ -546,7 +559,7 @@ def test_B02_version_strings_consistent():
     src = open(V22SRC).read()
     man = json.load(open(os.path.join(ROOT, "device", "build_manifest.json")))
     patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
-    assert "v2.2.0-rc1" in src and man["version"] == "2.2.0-rc1" and "2.2.0-rc1" in patch["description"]
+    assert "v2.2.0-rc2" in src and man["version"] == "2.2.0-rc2" and "2.2.0-rc2" in patch["description"]
     texts = [b["box"].get("text", "") for b in patch["boxes"]]
     assert "gen~ @title tubby_v2_2" in texts and any("v2.2" in t for t in texts)
 
@@ -578,3 +591,17 @@ def test_T02_capture_case_C13_reference_equals_motion_zero(v22):
     p, _ = gen_params(c["ui"])
     assert p["motion"] == 100
     assert _identical(v22.run(a, b, 48000, p), v22.run(a, b, 48000, dict(p, motion=0)))
+
+
+def test_G03_rc2_reorder_is_bit_identical_to_rc1(v22):
+    """rc2 only moved the Param declarations below the functions: output == rc1 source, bit for bit."""
+    import subprocess as sp
+    rc1 = sp.run(["git", "-C", ROOT, "show", "v2.2.0-rc1:src/tubby_filter.genexpr"], capture_output=True, text=True)
+    if rc1.returncode != 0:
+        pytest.skip("git history not available (not a clone)")
+    old = compile_genexpr(rc1.stdout, check_order=False)
+    for sr in (44100, 96000):
+        n = sr // 3
+        a, b = RNG.uniform(-1, 1, n), RNG.uniform(-1, 1, n)
+        p = _storm(n); p["motion"] = np.repeat(RNG.uniform(0, 100, n // 1700 + 1), 1700)[:n]
+        assert _identical(v22.run(a, b, sr, p), old.run(a, b, sr, p))

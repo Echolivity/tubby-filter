@@ -38,7 +38,7 @@ V2SRC = os.path.join(ROOT, "legacy", "v2", "tubby_filter.genexpr")
 
 @pytest.fixture(scope="session")
 def v21():
-    return compile_genexpr(open(SRC).read())
+    return compile_genexpr(open(SRC).read(), check_order=(TARGET != "v2.1"))
 
 
 @pytest.fixture(scope="session")
@@ -46,7 +46,7 @@ def v2():
     # V2 with its known init-constant discrepancy corrected, so only intended changes remain
     s = open(V2SRC).read().replace("History lfL(2.9957), lfR(2.9957)",
                                    "History lfL(2.995732273553991), lfR(2.995732273553991)")
-    return compile_genexpr(s)
+    return compile_genexpr(s, check_order=False)   # frozen V2 reference
 
 
 RNG = np.random.default_rng(1234)
@@ -366,7 +366,7 @@ def test_amxd_container_and_embedded_source():
 def test_ui_parameters_cover_dsp_and_keep_v2_names():
     patch = json.load(open(os.path.join(DEV, "Tubby Filter.maxpat")))["patcher"]
     msgs = {b["box"]["text"].split()[1] for b in patch["boxes"] if b["box"].get("text", "").startswith("prepend ")}
-    params = set(compile_genexpr(open(SRC).read()).params)
+    params = set(compile_genexpr(open(SRC).read(), check_order=(TARGET != "v2.1")).params)
     assert msgs == params
     longnames = {b["box"]["saved_attribute_attributes"]["valueof"]["parameter_longname"]
                  for b in patch["boxes"] if "saved_attribute_attributes" in b["box"]}

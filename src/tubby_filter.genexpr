@@ -1,5 +1,5 @@
 // =====================================================================
-//  Tubby Filter v2.2.0-rc1 — gen~ codebox (in1/in2 -> out1/out2)
+//  Tubby Filter v2.2.0-rc2 — gen~ codebox (in1/in2 -> out1/out2)
 //  = v2.1 + Motion (movement-dependent resonance). Motion 0 == v2.1 exactly.
 //  Release candidate: validated in simulation only; native gen~ and Ableton
 //  Live validation pending (see validation/V22_RELEASE_READINESS.md).
@@ -18,28 +18,14 @@
 //   * DSP kernels are pure functions: state in, state out
 //   * every state write passes fixnan(fixdenorm())
 //  Times are in ms/Hz, so behaviour is the same at any sample rate.
+//  gen~ rule: every function definition must precede ALL statements,
+//  including Param declarations (rc1 failed to compile: "function definitions
+//  must precede all statements"; found in Live 12, fixed in rc2).
 //  No identifier shadows a gen operator/constant (tools/gen_compat.py; 2.2.0-rc1
 //  renamed v2.1's `f` -> `hpf` and `i` -> `idx`, which collide with gen's
 //  `f` (float) and `i` (int) operators).
 // =====================================================================
 
-// ---- parameters (V2 names, ranges and meanings unchanged)
-Param knob(0, min=0, max=11);      // left/linked step: 0 = FLAT, 1..11
-Param reso(1.4, min=0.5, max=8);   // Q
-Param drive(20, min=0, max=100);   // % drive (0..+18 dB into the shaper)
-Param glide(0, min=0, max=2000);   // ms of filter-frequency glide
-Param click(30, min=0, max=100);   // % switch transient
-Param slope(1, min=0, max=1);      // 0 = 12 dB/oct, 1 = 18 dB/oct
-Param blend(100, min=0, max=100);  // % dry/wet
-Param knobr(0, min=0, max=11);     // right step (Dual mode only)
-Param stereo(0, min=0, max=2);     // 0 Link, 1 Dual, 2 Mono
-Param comp(1, min=0, max=1);       // 1 Unity / 0 Peak drive calibration
-Param drvonly(0, min=0, max=1);    // 1 = filter bypassed, drive only
-Param outdb(0, min=-24, max=12);   // output level, dB
-// ---- V2.1 (internal, sent by live.thisdevice; not a user control)
-Param active(1, min=0, max=1);     // device on/off state
-// ---- V2.2
-Param motion(0, min=0, max=100);   // % resonance bloom while the cutoff moves
 
 // ---------------------------------------------------------------------
 // one-pole smoother, time constant in ms
@@ -118,6 +104,24 @@ bounce(t) {
     e3 = t >= 0.0026 ? 0.20 * exp(-(t - 0.0026) / tau) : 0;
     return t < 0.02 ? e1 + e2 + e3 : 0;
 }
+
+// ---- parameters (V2 names, ranges and meanings unchanged)
+Param knob(0, min=0, max=11);      // left/linked step: 0 = FLAT, 1..11
+Param reso(1.4, min=0.5, max=8);   // Q
+Param drive(20, min=0, max=100);   // % drive (0..+18 dB into the shaper)
+Param glide(0, min=0, max=2000);   // ms of filter-frequency glide
+Param click(30, min=0, max=100);   // % switch transient
+Param slope(1, min=0, max=1);      // 0 = 12 dB/oct, 1 = 18 dB/oct
+Param blend(100, min=0, max=100);  // % dry/wet
+Param knobr(0, min=0, max=11);     // right step (Dual mode only)
+Param stereo(0, min=0, max=2);     // 0 Link, 1 Dual, 2 Mono
+Param comp(1, min=0, max=1);       // 1 Unity / 0 Peak drive calibration
+Param drvonly(0, min=0, max=1);    // 1 = filter bypassed, drive only
+Param outdb(0, min=-24, max=12);   // output level, dB
+// ---- V2.1 (internal, sent by live.thisdevice; not a user control)
+Param active(1, min=0, max=1);     // device on/off state
+// ---- V2.2
+Param motion(0, min=0, max=100);   // % resonance bloom while the cutoff moves
 
 // ---------------------------------------------------------------------
 // state (all read at the top of the frame, written once at the end)

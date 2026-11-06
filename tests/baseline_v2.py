@@ -12,7 +12,7 @@ ROOT = os.path.join(HERE, "..")
 
 
 def load(path):
-    return compile_genexpr(open(os.path.join(ROOT, path)).read())
+    return compile_genexpr(open(os.path.join(ROOT, path)).read(), check_order=False)
 
 
 def discrete_switch_tests(prog, sr, extra=None):

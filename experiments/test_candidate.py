@@ -17,7 +17,7 @@ RNG = np.random.default_rng(77)
 
 @pytest.fixture(scope="module")
 def cand():
-    return compile_genexpr(open(CAND).read())
+    return compile_genexpr(open(CAND).read(), check_order=False)   # research candidate (rc1 layout)
 
 
 @pytest.fixture(scope="module")

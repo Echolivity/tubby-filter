@@ -14,7 +14,7 @@ import hashlib, json, os, struct, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
-VERSION = "2.2.0-rc1"
+VERSION = "2.2.0-rc2"
 FLAVOUR = "v22"                     # v22 | v21 | candidate
 SOURCE = os.path.join(HERE, "tubby_filter.genexpr")
 CANDIDATE = None

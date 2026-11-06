@@ -52,8 +52,9 @@ def tokenize(src):
 
 # ----------------------------------------------------------------- parser
 class P:
-    def __init__(self, toks):
+    def __init__(self, toks, check_order=True):
         self.t, self.i = toks, 0
+        self.check_order = check_order
 
     def peek(self, o=0):
         return self.t[self.i + o]
@@ -75,14 +76,20 @@ class P:
     # program := (decl | funcdef | stmt)*
     def program(self):
         params, funcs, body = [], {}, []
+        seen_stmt = None   # gen~: "function definitions must precede all statements" (incl. Param)
         while self.peek()[0] != "eof":
             k, v, ln = self.peek()
             if v == "Param":
+                seen_stmt = seen_stmt or ln
                 params.append(self.param())
             elif k == "id" and v not in ("if", "for", "while") and self.peek(1)[1] == "(" and self._is_funcdef():
+                if seen_stmt and self.check_order:
+                    raise SyntaxError(f"line {ln}: function definitions not allowed here (function definitions "
+                                      f"must precede all statements; first statement at line {seen_stmt})")
                 name, args, stmts = self.funcdef()
                 funcs[name] = (args, stmts)
             else:
+                seen_stmt = seen_stmt or ln
                 body.append(self.stmt())
         return params, funcs, body
 
@@ -495,16 +502,19 @@ class Program:
 _CACHE = {}
 
 
-def compile_genexpr(src, name="gsx_prog"):
-    """Compiled programs are cached per source text within a process."""
-    key = (src, name)
+def compile_genexpr(src, name="gsx_prog", check_order=True):
+    """Compiled programs are cached per source text within a process.
+    check_order=False skips gen~'s 'function definitions must precede all statements'
+    rule. Use it ONLY to run frozen historical sources (V2, V2.1, the research
+    candidate) as numerical references: those sources do NOT compile in native gen~."""
+    key = (src, name, check_order)
     if key not in _CACHE:
-        _CACHE[key] = _compile(src, name)
+        _CACHE[key] = _compile(src, name, check_order)
     return _CACHE[key]
 
 
-def _compile(src, name):
-    params, funcs, body = P(tokenize(src)).program()
+def _compile(src, name, check_order=True):
+    params, funcs, body = P(tokenize(src), check_order).program()
     g = Gen(params, funcs)
     env = {}
     g.block(body, env, 2, "", [])

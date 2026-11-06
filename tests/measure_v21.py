@@ -23,7 +23,7 @@ os.makedirs(IMG, exist_ok=True)
 plt.rcParams.update({"figure.dpi": 110, "font.size": 9, "axes.grid": True, "grid.alpha": .3})
 RATES5 = [44100, 48000, 88200, 96000, 176400, 192000]
 
-V2 = compile_genexpr(open(os.path.join(ROOT, "legacy/v2/tubby_filter.genexpr")).read())
+V2 = compile_genexpr(open(os.path.join(ROOT, "legacy/v2/tubby_filter.genexpr")).read(), check_order=False)
 V21 = compile_genexpr(open(os.path.join(ROOT, "src/tubby_filter.genexpr")).read())
 R = {"_note": "SIMULATED: shipped .genexpr sources executed by tools/gsx.py. "
               "Not gen~ and not Ableton Live measurements."}

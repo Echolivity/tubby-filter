@@ -24,8 +24,9 @@ for d in (OUT, IMG, AUD):
     os.makedirs(d, exist_ok=True)
 plt.rcParams.update({"figure.dpi": 110, "font.size": 9, "axes.grid": True, "grid.alpha": .3})
 V22 = compile_genexpr(open(os.path.join(ROOT, "src", "tubby_filter.genexpr")).read())
-V21 = compile_genexpr(open(os.path.join(ROOT, "legacy", "v2.1", "tubby_filter.genexpr")).read())
-CAND = compile_genexpr(open(os.path.join(ROOT, "experiments", "candidate", "tubby_filter_v22_candidate.genexpr")).read())
+V21 = compile_genexpr(open(os.path.join(ROOT, "legacy", "v2.1", "tubby_filter.genexpr")).read(), check_order=False)
+CAND = compile_genexpr(open(os.path.join(ROOT, "experiments", "candidate", "tubby_filter_v22_candidate.genexpr")).read(),
+                       check_order=False)
 RATES = [44100, 48000, 88200, 96000, 192000]
 R = {"_environment": "[sim] GSX execution of the shipped .genexpr sources (numba), Ubuntu 24.04, Python 3.13; "
                      "not native gen~, not Ableton Live; no audio was listened to"}

@@ -54,6 +54,20 @@ def audit(src):
         depth += l.count("{") - l.count("}")
         if depth == 0 and "}" in l:
             last_fn_end = n if first_stmt is None or n < first_stmt else last_fn_end
+    # gen~ rule (confirmed by the Max console in Live 12): every function definition must
+    # precede ALL statements, including Param and History declarations
+    depth, first_stmt_line = 0, None
+    for n, l in enumerate(lines, 1):
+        st = l.strip()
+        if depth == 0 and st and not st.startswith("}"):
+            m = re.match(r"^([A-Za-z_]\w*)\s*\([^()]*\)\s*\{", st)
+            if m and m.group(1) not in KEYWORDS:
+                if first_stmt_line:
+                    issues.append(f"line {n}: function '{m.group(1)}' defined after a statement (line "
+                                  f"{first_stmt_line}); gen~: function definitions must precede all statements")
+            elif first_stmt_line is None:
+                first_stmt_line = n
+        depth += l.count("{") - l.count("}")
     # declarations
     params = re.findall(r"\bParam\s+([A-Za-z_]\w*)\s*\(", code)
     hist = []
