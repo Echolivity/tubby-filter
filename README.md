@@ -1,4 +1,4 @@
-![Tubby Filter — Echolivity Tools](assets/tubby-filter-banner.svg)
+![Tubby Filter — Echolivity Tools](assets/tubby-filter-banner.svg)\n\n<div align="center">\n\n![Echolivity Tools](assets/echolivity-tools-mark.svg)\n\n</div>
 
 <div align="center">
 
