@@ -1,98 +1,128 @@
+![Tubby Filter — Echolivity Tools](assets/tubby-filter-banner.svg)
+
+<div align="center">
+
 # Tubby Filter
 
-**A stepped dub high-pass filter with console drive, for Ableton Live (Max for Live audio effect).**
+**A stepped dub high-pass with console drive for Ableton Live.**
 
-It is inspired by the switched high-pass filters that dub engineers threw around on the mixing desk. It's a character model, not a circuit clone, and it is not affiliated with or endorsed by King Tubby's estate or any hardware maker.
+A hands-on character instrument inspired by the switched filters dub engineers worked into the mixing desk.
 
-> **Status: 2.2 beta (build 2.2.0-rc5).**
-> - **Confirmed by the author** on Ableton Live 12 for Windows: it loads, makes sound, and the Filter knob maps to Live's LFO in Mod mode.
-> - **Not yet tested** on macOS, older Live versions, or the full QA checklist (`validation/ABLETON_LIVE_12_QA.md`).
->
-> Bug reports and test results are very welcome. Open an issue with your OS, Live and Max versions.
+[Features](#features) · [Install](#install) · [Controls](#controls) · [Build and test](#build-and-test) · [Validation](#validation-and-known-limitations)
+
+![Ableton Live 12](https://img.shields.io/badge/Ableton-Live%2012-ff764d)
+![Max for Live](https://img.shields.io/badge/Max%20for%20Live-required-cb8b4b)
+![License](https://img.shields.io/badge/license-GPL--3.0-blue)
+
+</div>
+
+> **Status: 2.2 beta — build 2.2.0-rc5.** Confirmed by the author on Ableton Live 12 for Windows: it loads, makes sound, and the Filter knob maps to Live's LFO in Mod mode. macOS, older Live versions, and the full native QA checklist are not yet tested. Bug reports are welcome; include OS, Live and Max versions.
 
 **Requirements:** Ableton Live 12 Suite, or Live 12 Standard with the Max for Live add-on.
 
+## Features
+
+- 12 stepped high-pass positions: FLAT, 70, 100, 150, 250, 500, 1k, 2k, 3k, 5k, 7.5k and 10k Hz.
+- Resonance Q 0.5–8 and console-style drive from clean to +18 dB.
+- Glide for smooth transitions; Click for switch transients at any Glide setting.
+- Motion adds velocity-sensitive resonance bloom while the cutoff moves.
+- Link / Dual / Mono stereo modes, 12 / 18 dB slopes, output and dry/wet mix.
+- Live LFO mapping, including Mod mode.
+
+This is a **character model, not a circuit clone**. It is not affiliated with or endorsed by King Tubby's estate or any hardware maker.
+
 ## Install
-Drag `device/Tubby Filter.amxd` onto an audio track (Live 12, Max for Live). If Live rejects it, open `device/Tubby Filter.maxpat` in Max and choose **File → Save As Device…**. Windows build and setup: `docs/BUILD_WINDOWS.md`.
+
+1. Drag [`device/Tubby Filter.amxd`](device/Tubby%20Filter.amxd) onto an audio track.
+2. If Live rejects the device, open [`device/Tubby Filter.maxpat`](device/Tubby%20Filter.maxpat) in Max and choose **File → Save As Device…**.
+
+See [Windows build instructions](docs/BUILD_WINDOWS.md).
 
 ## Controls
-These are the V2.1 controls (names, ranges, defaults and layout unchanged) **plus Motion**.
 
-| Control | Parameter | Range (default) | What it does |
+V2.1 control names, ranges, defaults and layout are unchanged, with Motion added.
+
+| Control | Parameter | Range (default) | Function |
 |---|---|---|---|
-| **Filter** (big knob) | `Tubby Filter` | FLAT · 70 · 100 · 150 · 250 · 500 · 1k · 2k · 3k · 5k · 7.5k · 10k (FLAT) | Stepped high-pass |
-| **Filter R** | `Filter R` | same (FLAT) | Right-side cutoff, used in Dual only |
-| **Reso** | `Reso` | Q 0.5–8 (1.4) | Resonance |
-| **Drive** | `Drive` | 0–100 % (20) | Console saturation, 0 to +18 dB; 0 % is clean |
-| **Output** | `Output` | −24 to +12 dB (0) | Output level |
-| **Glide** | `Glide` | 0–2000 ms (0) | How the cutoff moves between steps: 0 = hard switch |
-| **Click** | `Click` | 0–100 % (30) | Switch sound on every step move, at any Glide |
-| **Mix** | `Mix` | 0–100 % (100) | Dry/wet, phase-aligned internally |
-| **Motion** *(new)* | `Motion` | 0–100 % (**0**) | Resonance blooms while the cutoff is **moving** and relaxes when it stops. 0 = exactly V2.1. |
-| **Slope** | `Slope` | 12 / 18 dB (18) | — |
-| **Stereo** | `Stereo` | Link / Dual / Mono (Link) | Click-free switching |
-| **Drive Cal** | `Drive Cal` | Peak / Unity (Unity) | Drive gain calibration |
-| **Mode** | `Mode` | Filter / Drive (Filter) | Drive = filter bypassed |
+| Filter | `Tubby Filter` | FLAT, 70–10k Hz (FLAT) | Stepped high-pass |
+| Filter R | `Filter R` | Same (FLAT) | Right cutoff in Dual mode |
+| Reso | `Reso` | Q 0.5–8 (1.4) | Resonance |
+| Drive | `Drive` | 0–100% (20) | Saturation, 0 to +18 dB |
+| Output | `Output` | −24 to +12 dB (0) | Output level |
+| Glide | `Glide` | 0–2000 ms (0) | Cutoff transition; 0 = hard switch |
+| Click | `Click` | 0–100% (30) | Switch transient |
+| Mix | `Mix` | 0–100% (100) | Phase-aligned dry/wet |
+| Motion | `Motion` | 0–100% (0) | Movement-sensitive resonance bloom |
+| Slope | `Slope` | 12 / 18 dB (18) | Filter slope |
+| Stereo | `Stereo` | Link / Dual / Mono (Link) | Stereo behaviour |
+| Drive Cal | `Drive Cal` | Peak / Unity (Unity) | Drive calibration |
+| Mode | `Mode` | Filter / Drive (Filter) | Drive mode bypasses filter |
 
-### Modulating Tubby with an LFO
-Every knob can be mapped with Live's LFO, including in **Mod** mode. Filter and Filter R move through 0–11 and snap to the nearest step, so an LFO steps through the cutoffs, with the switch Click on each step. Useful settings:
-- **Glide** 200–500 ms: smooth sweeps instead of steps.
-- **Click** 0: silent steps.
-- **Motion** up: a resonant bloom as the LFO moves the filter.
+### LFO starting points
 
-### Motion
-- **What drives it:** Motion responds to *how fast the cutoff is moving*, not where it is. It measures the cutoff's speed in octaves per second and maps it to an amount from 0 to 1 (8 oct/s gives half). That amount passes through an envelope with a 2 ms attack and a 120 ms release.
-- **What it does:** it multiplies the filter's Q by up to 1 + 4 × Motion.
-- **What it doesn't do:** the cutoff's path is never changed (tested bit-exact). With a still cutoff, any Motion setting sounds exactly like Motion 0 (tested bit-exact).
+Every knob can be mapped with Live's LFO, including in Mod mode. Filter and Filter R move through 0–11 and snap to the nearest step.
 
-**How it behaves** ([sim], 48 kHz):
-- **Slow glides** (2 s) are barely affected: +0.3 dB.
-- **Medium and fast glides** (300–50 ms) bloom by +4 to +6 dB.
-- **Hard steps** give a short bloom of about +3.7 dB (20 ms loudness), which decays by about 20 dB within 0.3–0.4 s.
+- Glide 200–500 ms: smooth sweeps.
+- Click 0: silent steps.
+- Increase Motion for a resonance bloom as the LFO moves the filter.
 
-**Known issues** in `validation/V22_KNOWN_ISSUES.md`:
-- **KI-01:** a faint transient on hard steps at high Motion.
-- **KI-04:** tones that sit on a fast-moving resonance can get noticeably louder.
+### Motion behaviour
 
-## Repository
+Motion responds to **cutoff speed**, not cutoff position. Speed is measured in octaves per second and mapped from 0 to 1 (8 oct/s gives half), then shaped by a 2 ms attack / 120 ms release envelope. It multiplies filter Q by up to **1 + 4 × Motion**.
 
-```
-src/          tubby_filter.genexpr      V2.2 DSP: the single source of truth
-              build_device.py           deterministic build (default 2.2.0-rc1; --v21; --candidate)
-device/       Tubby Filter.amxd / .maxpat, build_manifest.json
-legacy/v2.1/  frozen V2.1 source and device + SHA256
-tools/        gsx.py (GenExpr executor, NOT gen~), gen_compat.py (static gen~ audit), halfband.py
-tests/        test_v22.py (V2.2 suite), test_regression.py (V2.1 behaviour suite, runs on V2.2
-              and, with TUBBY_TARGET=v2.1, on V2.1), model_v22.py / model_v21.py (reference models)
-validation/   V22_RELEASE_READINESS.md, V22_TEST_RESULTS.md, V22_COMPARISON_REPORT.md,
-              V22_MOTION_VALIDATION.md, V22_LATENCY_PHASE.md, V22_KNOWN_ISSUES.md,
-              ABLETON_LIVE_12_QA.md, capture kit (make_signals.py, cases.py, compare_capture.py),
-              null_test.py, v22_report.py
-reports/v22/  measurements JSON, plots, generated audio (reference, demos, KI-01 comparisons)
-docs/         DSP_ARCHITECTURE.md, BUILD_WINDOWS.md, CHANGELOG.md, TEST_METHODOLOGY.md
-experiments/, research/   V2.2 research material (EXPERIMENTAL, kept for reference)
-```
+The cutoff path is not changed. With a stationary cutoff, any Motion setting sounds exactly like Motion 0; both behaviours are reported bit-exact in simulation.
+
+**Simulated at 48 kHz:** slow 2 s glides +0.3 dB; medium/fast 300–50 ms glides +4 to +6 dB; hard steps about +3.7 dB at 20 ms loudness, decaying about 20 dB within 0.3–0.4 s.
+
+## Validation and known limitations
+
+The automated DSP suite runs the shipped GenExpr source through GSX on Linux. This is **simulation**, not native gen~ or Ableton validation. Apart from the author's Live 12 Windows checks above, the native QA checklist remains incomplete.
+
+Known issues in [`validation/V22_KNOWN_ISSUES.md`](validation/V22_KNOWN_ISSUES.md):
+- **KI-01:** faint transient on hard steps at high Motion.
+- **KI-04:** tones sitting on a fast-moving resonance can become noticeably louder.
+
+See [`validation/ABLETON_LIVE_12_QA.md`](validation/ABLETON_LIVE_12_QA.md) for the native test plan.
 
 ## Build and test
-The build needs only Python 3.10+. The tests also need `numpy scipy numba matplotlib pytest`.
 
+Build requires Python 3.10+. Tests additionally require `numpy scipy numba matplotlib pytest`.
+
+```bash
+python3 src/build_device.py
+python3 -m pytest -q tests experiments
+TUBBY_TARGET=v2.1 python3 -m pytest -q tests/test_regression.py
+python3 validation/v22_report.py
+python3 validation/make_signals.py 44100 48000 96000
 ```
-python3 src/build_device.py                          # device/ (2.2.0-rc1)
-python3 -m pytest -q tests experiments               # full automated suite (about 2.5 min)
-TUBBY_TARGET=v2.1 python3 -m pytest -q tests/test_regression.py   # same suite on frozen V2.1
-python3 validation/v22_report.py                     # reports/v22 (measurements, plots, audio)
-python3 validation/make_signals.py 44100 48000 96000 # Live capture material
-```
+
+The build script supports `--v21` and `--candidate`. See [`docs/BUILD_WINDOWS.md`](docs/BUILD_WINDOWS.md).
+
+## Project map
+
+| Path | Purpose |
+|---|---|
+| `src/tubby_filter.genexpr` | V2.2 DSP source of truth |
+| `src/build_device.py` | Deterministic device build |
+| `device/` | Max for Live device and build manifest |
+| `legacy/v2.1/` | Frozen V2.1 source/device and SHA-256 |
+| `tools/` | GSX executor, static gen~ audit, halfband utilities |
+| `tests/` | V2.2 and V2.1 regression suites and reference models |
+| `validation/` | Test methodology, reports, capture kit, latency/phase and known issues |
+| `reports/v22/` | Measurements, plots and generated reference/demo audio |
+| `docs/` | DSP architecture, Windows build, changelog and test methodology |
+| `experiments/`, `research/` | Experimental research material |
 
 ## Licence
-Tubby Filter is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License, version 3** (see `LICENSE`). It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+Tubby Filter is free software under the **GNU General Public License v3.0**. It is provided without warranty. See [`LICENSE`](LICENSE).
 
 Copyright (C) 2026 the Tubby Filter authors.
 
-**Result labels used in the documents:**
-- **[sim]**: the shipped source executed by GSX on Linux.
-- **[ref-model]**: research model.
-- **BLOCKED**: needs Max or Live.
-- **NOT TESTED**: not attempted.
+---
 
-The automated test results come from simulation. Apart from the author's own checks in Live 12 for Windows (see Status above), nothing in the validation documents has been confirmed in native gen~ or Ableton Live.
+<div align="center">
+
+**ECHOLIVITY TOOLS** · Built for hands-on music making.
+
+</div>
