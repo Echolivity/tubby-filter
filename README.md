@@ -1,15 +1,16 @@
-# Tubby Filter 2.2.0-rc1
+# Tubby Filter
 
-A stepped dub high-pass filter with console drive, for Ableton Live (Max for Live audio effect). It is inspired by the switched high-pass on King Tubby's desk, and it is a character model, not a circuit clone.
+**A stepped dub high-pass filter with console drive, for Ableton Live (Max for Live audio effect).**
 
-> **Release status: 2.2.0-rc1, BLOCKED pending native validation.** Every automated test passes on the shipped source when it's run through an independent GenExpr executor on Linux ([sim]). The one exception is an intentional strict expected failure, known issue KI-01. The device has **not** been compiled by gen~, loaded in Max, or run in Ableton Live. See `validation/V22_RELEASE_READINESS.md`.
+It is inspired by the switched high-pass filters that dub engineers threw around on the mixing desk. It's a character model, not a circuit clone, and it is not affiliated with or endorsed by King Tubby's estate or any hardware maker.
 
-| Version | Where | Status |
-|---|---|---|
-| **2.2.0-rc1** (this release candidate) | `src/`, `device/` | V2.1 + **Motion** |
-| 2.1.0-rc1 (baseline, frozen) | `legacy/v2.1/` (SHA-256 pinned); git tag `v2.1.0-rc1` | Unchanged; `--v21` rebuilds it byte-for-byte |
-| V2.2 research | `experiments/`, `research/` (branch `dev/v2.2-research`) | **Experimental.** Not the release. Superseded by rc1 where they differ. |
-| V2 / V1 | `legacy/v2/`, `v1/` | Historical |
+> **Status: 2.2 beta (build 2.2.0-rc5).**
+> - **Confirmed by the author** on Ableton Live 12 for Windows: it loads, makes sound, and the Filter knob maps to Live's LFO in Mod mode.
+> - **Not yet tested** on macOS, older Live versions, or the full QA checklist (`validation/ABLETON_LIVE_12_QA.md`).
+>
+> Bug reports and test results are very welcome. Open an issue with your OS, Live and Max versions.
+
+**Requirements:** Ableton Live 12 Suite, or Live 12 Standard with the Max for Live add-on.
 
 ## Install
 Drag `device/Tubby Filter.amxd` onto an audio track (Live 12, Max for Live). If Live rejects it, open `device/Tubby Filter.maxpat` in Max and choose **File → Save As Device…**. Windows build and setup: `docs/BUILD_WINDOWS.md`.
@@ -32,6 +33,12 @@ These are the V2.1 controls (names, ranges, defaults and layout unchanged) **plu
 | **Stereo** | `Stereo` | Link / Dual / Mono (Link) | Click-free switching |
 | **Drive Cal** | `Drive Cal` | Peak / Unity (Unity) | Drive gain calibration |
 | **Mode** | `Mode` | Filter / Drive (Filter) | Drive = filter bypassed |
+
+### Modulating Tubby with an LFO
+Every knob can be mapped with Live's LFO, including in **Mod** mode. Filter and Filter R move through 0–11 and snap to the nearest step, so an LFO steps through the cutoffs, with the switch Click on each step. Useful settings:
+- **Glide** 200–500 ms: smooth sweeps instead of steps.
+- **Click** 0: silent steps.
+- **Motion** up: a resonant bloom as the LFO moves the filter.
 
 ### Motion
 - **What drives it:** Motion responds to *how fast the cutoff is moving*, not where it is. It measures the cutoff's speed in octaves per second and maps it to an amount from 0 to 1 (8 oct/s gives half). That amount passes through an envelope with a 2 ms attack and a 120 ms release.
@@ -77,10 +84,15 @@ python3 validation/v22_report.py                     # reports/v22 (measurements
 python3 validation/make_signals.py 44100 48000 96000 # Live capture material
 ```
 
-**Result labels used throughout:**
+## Licence
+Tubby Filter is free software: you can redistribute it and/or modify it under the terms of the **GNU General Public License, version 3** (see `LICENSE`). It is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+Copyright (C) 2026 the Tubby Filter authors.
+
+**Result labels used in the documents:**
 - **[sim]**: the shipped source executed by GSX on Linux.
 - **[ref-model]**: research model.
 - **BLOCKED**: needs Max or Live.
 - **NOT TESTED**: not attempted.
 
-No result in this repository comes from native gen~ or Ableton Live, and no audio was listened to.
+The automated test results come from simulation. Apart from the author's own checks in Live 12 for Windows (see Status above), nothing in the validation documents has been confirmed in native gen~ or Ableton Live.
