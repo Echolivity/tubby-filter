@@ -29,6 +29,20 @@ A hands-on character instrument inspired by the switched filters dub engineers w
 - Link / Dual / Mono stereo modes, 12 / 18 dB slopes, output and dry/wet mix.
 - Live LFO mapping, including Mod mode.
 
+## Visuals and measurements
+
+![Tubby Filter device layout](legacy/v2/docs/img/layout_preview.png)
+
+> Device layout preview from the project's existing documentation. This is a design reference, not a screenshot of the current 2.2 beta build.
+
+![Measured stepped-filter frequency response](reports/v22/img/frequency_response.png)
+
+<sub>Measured DSP response from the repository's V2.2 validation reports.</sub>
+
+![Motion sweep spectrogram](reports/v22/img/motion_sweep_spectrogram.png)
+
+<sub>Simulation output illustrating the movement-sensitive resonance behaviour. See the validation notes below for the distinction between simulation and native Ableton testing.</sub>
+
 This is a **character model, not a circuit clone**. It is not affiliated with or endorsed by King Tubby's estate or any hardware maker.
 
 ## Install
