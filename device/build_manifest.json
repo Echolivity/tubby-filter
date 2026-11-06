@@ -1,6 +1,6 @@
 {
- "version": "2.2.0-rc2",
- "src/tubby_filter.genexpr": "cc85a647997855aea3e935ac77c3c6e1893d4e24e68e79bb89a2efaf26f112ff",
- "device/Tubby Filter.maxpat": "d88b4a73ae1436a7645dd3999edff914754e4c6e0ce16be8d35cd05e4120c7c9",
- "device/Tubby Filter.amxd": "6aa79e616549f58bfa7c9fb9d24a0c4c01c98344016c2eaea9558349fc3bbb38"
+ "version": "2.2.0-rc3",
+ "src/tubby_filter.genexpr": "4ef0cb130ed8c587475c0702835ce23034f564dc2d52e759dc6c7260cba3cd0f",
+ "device/Tubby Filter.maxpat": "98935322ddee950367011d4905aae803beedd06ede319d233a2d98dd6411757d",
+ "device/Tubby Filter.amxd": "628f6c088897ef265f99b200fd882bac0cd02e6129153031dc21f31e65bd6484"
 }

@@ -14,7 +14,7 @@ import hashlib, json, os, struct, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
-VERSION = "2.2.0-rc2"
+VERSION = "2.2.0-rc3"
 FLAVOUR = "v22"                     # v22 | v21 | candidate
 SOURCE = os.path.join(HERE, "tubby_filter.genexpr")
 CANDIDATE = None
@@ -107,6 +107,7 @@ UI = []
 x = [30]
 
 STEPS = ["FLAT", "70", "100", "150", "250", "500", "1k", "2k", "3k", "5k", "7.5k", "10k"]
+PARAMS = []   # (box id, long name, short name), in panel order
 
 def control(i, cls, longname, short, msg, va, prect, outs, info, extra=None):
     va = dict(va)
@@ -119,6 +120,12 @@ def control(i, cls, longname, short, msg, va, prect, outs, info, extra=None):
          "saved_attribute_attributes": {"valueof": va}}
     if extra:
         b.update(extra)
+    if FLAVOUR == "v22":
+        # Max saves every parameter object with a varname (= its long name). Live's
+        # mapping (LFO / Modulators "Map", MIDI, Macros) relies on the device's
+        # registered parameter list; rc1/rc2 omitted it (reported from Live 12).
+        b["varname"] = longname
+        PARAMS.append((i, longname, short))
     boxes.append({"box": b})
     obj(i + "-p", "prepend " + msg, 1, 1, x[0], 290, 100)
     link(i, 0, i + "-p", 0); link(i + "-p", 0, "gen", 0)
@@ -182,6 +189,18 @@ patch = {"patcher": {"fileversion": 1, "appversion": APP, "classnamespace": "box
                      "rect": [60, 60, 1200, 520], "openinpresentation": 1, "devicewidth": 424.0,
                      "description": f"Tubby Filter {VERSION} — stepped dub high-pass with console drive",
                      "boxes": boxes, "lines": lines}}
+if FLAVOUR == "v22":
+    # top-level parameter registry, in the format Max itself writes (compared against
+    # Ableton's maxdevtools test devices). Banks give Push / Live's device view a
+    # sensible order: the 8 performance controls first, the switches second.
+    BANK0 = ["Tubby Filter", "Reso", "Drive", "Output", "Glide", "Click", "Mix", "Motion"]
+    BANK1 = ["Filter R", "Slope", "Stereo", "Drive Cal", "Mode", "-", "-", "-"]
+    reg = {i: [ln, sn, 0] for i, ln, sn in PARAMS}
+    reg["parameterbanks"] = {"0": {"index": 0, "name": "Perform", "parameters": BANK0},
+                             "1": {"index": 1, "name": "Setup", "parameters": BANK1}}
+    reg["inherited_shortname"] = 1
+    patch["patcher"]["parameters"] = reg
+    patch["patcher"]["latency"] = 0
 js = json.dumps(patch, indent=1)
 open(os.path.join(OUT, "Tubby Filter.maxpat"), "w").write(js)
 body = js.encode() + b"\x00"

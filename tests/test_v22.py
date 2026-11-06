@@ -454,7 +454,8 @@ def test_L02_internal_dry_wet_phase_aligned(v22, sr):
 def test_L03_no_latency_declared_in_device():
     """3-sample latency declaration is NOT implemented (PDC unverified); device declares none."""
     patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
-    assert not any("latency" in k.lower() for k in patch)
+    # rc3 writes Max's own default "latency": 0 (= Defined Latency off). Any non-zero value fails.
+    assert all(patch[k] == 0 for k in patch if "latency" in k.lower())
 
 
 # ======================================================================== P: parameters / presets
@@ -559,7 +560,7 @@ def test_B02_version_strings_consistent():
     src = open(V22SRC).read()
     man = json.load(open(os.path.join(ROOT, "device", "build_manifest.json")))
     patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
-    assert "v2.2.0-rc2" in src and man["version"] == "2.2.0-rc2" and "2.2.0-rc2" in patch["description"]
+    assert "v2.2.0-rc3" in src and man["version"] == "2.2.0-rc3" and "2.2.0-rc3" in patch["description"]
     texts = [b["box"].get("text", "") for b in patch["boxes"]]
     assert "gen~ @title tubby_v2_2" in texts and any("v2.2" in t for t in texts)
 
@@ -605,3 +606,21 @@ def test_G03_rc2_reorder_is_bit_identical_to_rc1(v22):
         a, b = RNG.uniform(-1, 1, n), RNG.uniform(-1, 1, n)
         p = _storm(n); p["motion"] = np.repeat(RNG.uniform(0, 100, n // 1700 + 1), 1700)[:n]
         assert _identical(v22.run(a, b, sr, p), old.run(a, b, sr, p))
+
+
+def test_P05_parameters_registered_for_live_mapping():
+    """rc3: every control has varname == long name and is listed in the top-level 'parameters'
+    registry (format as written by Max), so Live can map it (LFO/Modulators Map, MIDI, Macros).
+    Reported from Live 12: rc2 controls could not be mapped to an LFO."""
+    patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
+    reg = patch["parameters"]
+    ctrls = [b["box"] for b in patch["boxes"] if "saved_attribute_attributes" in b["box"]]
+    assert len(ctrls) == 13
+    names = set()
+    for bx in ctrls:
+        va = bx["saved_attribute_attributes"]["valueof"]
+        assert bx["varname"] == va["parameter_longname"]
+        assert reg[bx["id"]] == [va["parameter_longname"], va["parameter_shortname"], 0]
+        names.add(va["parameter_longname"])
+    banked = [n for bk in reg["parameterbanks"].values() for n in bk["parameters"] if n != "-"]
+    assert sorted(banked) == sorted(names)
