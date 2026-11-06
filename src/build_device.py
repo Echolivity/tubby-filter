@@ -14,7 +14,7 @@ import hashlib, json, os, struct, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
-VERSION = "2.2.0-rc3"
+VERSION = "2.2.0-rc4"
 FLAVOUR = "v22"                     # v22 | v21 | candidate
 SOURCE = os.path.join(HERE, "tubby_filter.genexpr")
 CANDIDATE = None
@@ -126,6 +126,12 @@ def control(i, cls, longname, short, msg, va, prect, outs, info, extra=None):
         # registered parameter list; rc1/rc2 omitted it (reported from Live 12).
         b["varname"] = longname
         PARAMS.append((i, longname, short))
+        # Live's modulation (LFO/Modulators in "Mod" mode, clip modulation) acts only on
+        # Float parameters with a Modulation Mode other than None. Enum parameters (Filter,
+        # Filter R, the switches) cannot be modulated by design; they map in Remote mode.
+        # 3 = Additive (order: None, Unipolar, Bipolar, Additive, Absolute).
+        if va.get("parameter_type") == 0:
+            va["parameter_modmode"] = 3
     boxes.append({"box": b})
     obj(i + "-p", "prepend " + msg, 1, 1, x[0], 290, 100)
     link(i, 0, i + "-p", 0); link(i + "-p", 0, "gen", 0)

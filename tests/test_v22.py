@@ -467,8 +467,10 @@ def _params(path):
         if "saved_attribute_attributes" in bx:
             va = bx["saved_attribute_attributes"]["valueof"]
             msg = [c["box"]["text"] for c in patch["boxes"] if c["box"].get("id") == bx["id"] + "-p"][0]
+            # parameter_modmode (rc4) only enables Live modulation; it changes no stored value,
+            # range, default or scaling, so it is excluded from the V2.1 equality check
             out[va["parameter_longname"]] = (bx["maxclass"], msg, {k: v for k, v in va.items()
-                                                                   if k not in ("parameter_info",)},
+                                                                   if k not in ("parameter_info", "parameter_modmode")},
                                              bx["presentation_rect"])
     return out
 
@@ -560,7 +562,7 @@ def test_B02_version_strings_consistent():
     src = open(V22SRC).read()
     man = json.load(open(os.path.join(ROOT, "device", "build_manifest.json")))
     patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
-    assert "v2.2.0-rc3" in src and man["version"] == "2.2.0-rc3" and "2.2.0-rc3" in patch["description"]
+    assert "v2.2.0-rc4" in src and man["version"] == "2.2.0-rc4" and "2.2.0-rc4" in patch["description"]
     texts = [b["box"].get("text", "") for b in patch["boxes"]]
     assert "gen~ @title tubby_v2_2" in texts and any("v2.2" in t for t in texts)
 
@@ -624,3 +626,19 @@ def test_P05_parameters_registered_for_live_mapping():
         names.add(va["parameter_longname"])
     banked = [n for bk in reg["parameterbanks"].values() for n in bk["parameters"] if n != "-"]
     assert sorted(banked) == sorted(names)
+
+
+def test_P06_float_parameters_modulatable_enums_not():
+    """rc4: Live 12 LFO in Mod mode reported 'parameter does not support this operation'.
+    Every Float parameter must have Modulation Mode Additive (3); Enum parameters stay unset
+    (Live cannot modulate Enum parameters)."""
+    patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
+    floats, enums = [], []
+    for b in patch["boxes"]:
+        va = b["box"].get("saved_attribute_attributes", {}).get("valueof")
+        if va:
+            (floats if va["parameter_type"] == 0 else enums).append(va)
+    assert sorted(v["parameter_longname"] for v in floats) == sorted(
+        ["Reso", "Drive", "Output", "Glide", "Click", "Mix", "Motion"])
+    assert all(v["parameter_modmode"] == 3 for v in floats)
+    assert all("parameter_modmode" not in v for v in enums)

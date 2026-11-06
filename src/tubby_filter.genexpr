@@ -1,5 +1,5 @@
 // =====================================================================
-//  Tubby Filter v2.2.0-rc3 — gen~ codebox (in1/in2 -> out1/out2)
+//  Tubby Filter v2.2.0-rc4 — gen~ codebox (in1/in2 -> out1/out2)
 //  = v2.1 + Motion (movement-dependent resonance). Motion 0 == v2.1 exactly.
 //  Release candidate: validated in simulation only; native gen~ and Ableton
 //  Live validation pending (see validation/V22_RELEASE_READINESS.md).
