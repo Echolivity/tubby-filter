@@ -478,9 +478,21 @@ def _params(path):
 def test_P01_all_v21_parameters_preserved():
     p21 = _params(os.path.join(ROOT, "legacy", "v2.1", "device", "Tubby Filter.maxpat"))
     p22 = _params(os.path.join(ROOT, "device", "Tubby Filter.maxpat"))
+    # rc5 (documented compatibility change, KI-08): the two step selectors change type from
+    # Enum (12 items) to Float 0..11 so Live can modulate them. Range, default, numeric values,
+    # long names, message and layout are unchanged; everything else must match V2.1 exactly.
+    STEP_CHANGED = {"Tubby Filter", "Filter R"}
     for name, (cls, msg, va, rect) in p21.items():
         assert name in p22, name
         c2, m2, va2, r2 = p22[name]
+        if name in STEP_CHANGED:
+            assert (cls, msg, rect) == (c2, m2, r2), name
+            assert va["parameter_type"] == 2 and va2["parameter_type"] == 0
+            assert len(va["parameter_enum"]) == 12 and va["parameter_mmax"] == 11
+            assert va2["parameter_mmin"] == 0.0 and va2["parameter_mmax"] == 11.0
+            assert va2["parameter_initial"] == [0.0] and va["parameter_initial"] == [0]
+            assert va2["parameter_longname"] == va["parameter_longname"]
+            continue
         assert (cls, msg, va, rect) == (c2, m2, va2, r2), name      # id, class, range, default, scaling, layout
     assert set(p22) - set(p21) == {"Motion"}
     va = p22["Motion"][2]
@@ -562,7 +574,7 @@ def test_B02_version_strings_consistent():
     src = open(V22SRC).read()
     man = json.load(open(os.path.join(ROOT, "device", "build_manifest.json")))
     patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
-    assert "v2.2.0-rc4" in src and man["version"] == "2.2.0-rc4" and "2.2.0-rc4" in patch["description"]
+    assert "v2.2.0-rc5" in src and man["version"] == "2.2.0-rc5" and "2.2.0-rc5" in patch["description"]
     texts = [b["box"].get("text", "") for b in patch["boxes"]]
     assert "gen~ @title tubby_v2_2" in texts and any("v2.2" in t for t in texts)
 
@@ -628,6 +640,35 @@ def test_P05_parameters_registered_for_live_mapping():
     assert sorted(banked) == sorted(names)
 
 
+def test_P07_step_labels_show_step_names():
+    """rc5: Filter / Filter R hide their number and show the step name via
+    [expr int($f1+0.5)] -> [sel 0..11] -> 'set <name>' -> comment, matching the DSP rounding."""
+    patch = json.load(open(os.path.join(ROOT, "device", "Tubby Filter.maxpat")))["patcher"]
+    B = {b["box"]["id"]: b["box"] for b in patch["boxes"]}
+    L = {(l["patchline"]["source"][0], l["patchline"]["source"][1], l["patchline"]["destination"][0])
+         for l in patch["lines"]}
+    steps = ["FLAT", "70", "100", "150", "250", "500", "1k", "2k", "3k", "5k", "7.5k", "10k"]
+    for d in ("step", "stepr"):
+        assert B[d]["shownumber"] == 0
+        assert B[d + "-rnd"]["text"] == "expr int($f1+0.5)"
+        assert B[d + "-sel"]["text"] == "sel " + " ".join(map(str, range(12)))
+        assert (d, 0, d + "-rnd") in L and (d + "-rnd", 0, d + "-sel") in L
+        for k, n in enumerate(steps):
+            assert B[f"{d}-m{k}"]["text"] == f"set {n}"
+            assert (d + "-sel", k, f"{d}-m{k}") in L and (f"{d}-m{k}", 0, d + "-lbl") in L
+    # the label rounding equals the DSP's floor(knob + 0.5) for every value incl. modulation
+    for v in np.linspace(0, 11, 2201):
+        assert int(v + 0.5) == min(max(math.floor(v + 0.5), 0), 11)
+    # labels do not overlap other controls
+    rects = {i: b["presentation_rect"] for i, b in B.items() if b.get("maxclass") in ("live.dial", "live.tab")}
+    for lbl in ("step-lbl", "stepr-lbl"):
+        lx, ly, lw, lh = B[lbl]["presentation_rect"]
+        for i, (x, y, w, h) in rects.items():
+            if i in ("step", "stepr"):
+                continue
+            assert lx + lw <= x or x + w <= lx or ly + lh <= y or y + h <= ly, (lbl, i)
+
+
 def test_P06_float_parameters_modulatable_enums_not():
     """rc4: Live 12 LFO in Mod mode reported 'parameter does not support this operation'.
     Every Float parameter must have Modulation Mode Additive (3); Enum parameters stay unset
@@ -639,6 +680,6 @@ def test_P06_float_parameters_modulatable_enums_not():
         if va:
             (floats if va["parameter_type"] == 0 else enums).append(va)
     assert sorted(v["parameter_longname"] for v in floats) == sorted(
-        ["Reso", "Drive", "Output", "Glide", "Click", "Mix", "Motion"])
+        ["Reso", "Drive", "Output", "Glide", "Click", "Mix", "Motion", "Tubby Filter", "Filter R"])
     assert all(v["parameter_modmode"] == 3 for v in floats)
     assert all("parameter_modmode" not in v for v in enums)

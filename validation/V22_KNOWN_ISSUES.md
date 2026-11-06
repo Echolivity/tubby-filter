@@ -11,6 +11,12 @@ Every item is either a measured characteristic (**[sim]**: the shipped source ru
 | **KI-03** | Latency | At 44.1 and 48 kHz the oversampler delays the signal by **about 3.07 samples at low frequencies, rising to 7.9–10.2 samples at 18 kHz.** Live is not told about it. Summing with an uncompensated parallel dry copy partly cancels from about 1 kHz up. A 3-sample *Defined Latency* would improve the null at 1 kHz from −7 to −40 dB, but **no integer delay is right across the band** (best integer per band in `reports/v22`). | `test_L01`; `reports/v22/v22_measurements.json` → `latency_phase` | **Not implemented**, as the brief asks: no hard-coding from simulation. PDC behaviour is test **L-PDC-1/2** in the QA checklist. The decision follows those results. |
 | **KI-06** | Presets | Old V2.1 sets and presets don't contain `Motion`. Live is *expected* to apply the parameter's initial value, 0, which gives V2.1's sound. Not verified in Live. | `test_P04` shows Motion 0 is bit-exact with V2.1 [sim]. | QA **P-1 to P-3**. |
 
+## Compatibility change (rc5)
+
+| ID | Change | Why | Risk / check |
+|---|---|---|---|
+| **KI-08** | **Filter** and **Filter R** changed from Enum (12 items) to **Float 0–11**, snapped to the nearest step by the DSP. Range, default (0 = FLAT), long names and stored numeric values are unchanged. The step name is shown by a label (FLAT … 10k). | Reported from Live 12: Live's LFO in **Mod** mode can't map Enum parameters ("The selected parameter does not support this operation"). Live only modulates Float parameters. | Old V2/V2.1 sets and automation of *Tubby Filter* hold the values 0–11, so they should land on the same step. **Unverified in Live.** QA items A-2 and P-2. |
+
 ## Characteristics: documented behaviour, not defects
 
 | ID | Characteristic | Evidence |

@@ -14,7 +14,7 @@ import hashlib, json, os, struct, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, "..")
-VERSION = "2.2.0-rc4"
+VERSION = "2.2.0-rc5"
 FLAVOUR = "v22"                     # v22 | v21 | candidate
 SOURCE = os.path.join(HERE, "tubby_filter.genexpr")
 CANDIDATE = None
@@ -140,14 +140,50 @@ def control(i, cls, longname, short, msg, va, prect, outs, info, extra=None):
 
 DIALCOL = {"activedialcolor": AMBER, "textcolor": CREAM, "dialcolor": [0.08, 0.1, 0.09, 1.0]}
 
-# big stepped selector (same longname/enum as v1's menu => automation & sets still map)
-control("step", "live.dial", "Tubby Filter", "Filter", "knob",
-        {"parameter_type": 2, "parameter_enum": STEPS, "parameter_mmax": 11, "parameter_initial": [0]},
-        [10, 24, 96, 118], ["", "float"],
-        "Stepped high-pass cutoff. FLAT = filter out. Linked/Mono: both sides; Dual: left side.", DIALCOL)
-control("stepr", "live.dial", "Filter R", "Filter R", "knobr",
-        {"parameter_type": 2, "parameter_enum": STEPS, "parameter_mmax": 11, "parameter_initial": [0]},
-        [110, 44, 52, 62], ["", "float"], "Right-side cutoff. Active only in Dual stereo mode.", DIALCOL)
+def step_label(dial_id, rect, size):
+    """V2.2: the stepped selectors are Float parameters (so Live can modulate them); the DSP
+    rounds to the nearest step. Their own number display is hidden and this label shows the
+    step name (FLAT, 70 ... 10k) for the current (also modulated) value."""
+    lx, ly = 470 + len(boxes) * 3, 120
+    obj(dial_id + "-rnd", "expr int($f1+0.5)", 1, 1, lx, ly, 110)
+    obj(dial_id + "-sel", "sel " + " ".join(str(k) for k in range(12)), 1, 13, lx, ly + 30, 200)
+    boxes.append({"box": {"id": dial_id + "-lbl", "maxclass": "comment", "text": "FLAT", "numinlets": 1,
+                          "numoutlets": 0, "fontsize": size, "textcolor": CREAM, "textjustification": 1,
+                          "presentation": 1, "presentation_rect": rect,
+                          "patching_rect": [lx, ly + 120, 60, 20]}})
+    link(dial_id, 0, dial_id + "-rnd", 0); link(dial_id + "-rnd", 0, dial_id + "-sel", 0)
+    for k, name in enumerate(STEPS):
+        mid = f"{dial_id}-m{k}"
+        boxes.append({"box": {"id": mid, "maxclass": "message", "text": f"set {name}", "numinlets": 2,
+                              "numoutlets": 1, "outlettype": [""], "patching_rect": [lx + k * 46, ly + 70, 44, 22]}})
+        link(dial_id + "-sel", k, mid, 0); link(mid, 0, dial_id + "-lbl", 0)
+
+
+if FLAVOUR == "v22":
+    # rc5: Float 0..11 (same numeric range and default as the V2.1 enum, so stored values and
+    # automation keep their positions) so Live 12's LFO in Mod mode can modulate the cutoff.
+    STEPVA = {"parameter_type": 0, "parameter_mmin": 0.0, "parameter_mmax": 11.0,
+              "parameter_initial": [0.0], "parameter_unitstyle": 0}
+    control("step", "live.dial", "Tubby Filter", "Filter", "knob", STEPVA,
+            [10, 24, 96, 118], ["", "float"],
+            "Stepped high-pass cutoff: FLAT, 70 Hz ... 10 kHz (snaps to the nearest step). "
+            "Linked/Mono: both sides; Dual: left side. Can be modulated by Live's LFO.",
+            dict(DIALCOL, shownumber=0))
+    control("stepr", "live.dial", "Filter R", "Filter R", "knobr", dict(STEPVA),
+            [110, 44, 52, 62], ["", "float"],
+            "Right-side cutoff (snaps to the nearest step). Active only in Dual stereo mode.",
+            dict(DIALCOL, shownumber=0))
+    step_label("step", [10, 126, 96, 16], 10.5)
+    step_label("stepr", [106, 92, 60, 14], 8.5)
+else:
+    # big stepped selector (same longname/enum as v1's menu => automation & sets still map)
+    control("step", "live.dial", "Tubby Filter", "Filter", "knob",
+            {"parameter_type": 2, "parameter_enum": STEPS, "parameter_mmax": 11, "parameter_initial": [0]},
+            [10, 24, 96, 118], ["", "float"],
+            "Stepped high-pass cutoff. FLAT = filter out. Linked/Mono: both sides; Dual: left side.", DIALCOL)
+    control("stepr", "live.dial", "Filter R", "Filter R", "knobr",
+            {"parameter_type": 2, "parameter_enum": STEPS, "parameter_mmax": 11, "parameter_initial": [0]},
+            [110, 44, 52, 62], ["", "float"], "Right-side cutoff. Active only in Dual stereo mode.", DIALCOL)
 
 def dial(i, name, lo, hi, init, unit, px, py, msg, info, exp=0.0):
     va = {"parameter_type": 0, "parameter_mmin": lo, "parameter_mmax": hi, "parameter_initial": [init],
